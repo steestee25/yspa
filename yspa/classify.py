@@ -28,6 +28,9 @@ RULES = [
         r"to be acquired", r"definitive (merger )?agreement", r"tender offer", r"agreed to acquire",
         r"to acquire .{0,60} for \$", r"merger agreement", r"takeover", r"offerta pubblica",
     )),
+    Rule("dati clinici positivi", "su", 7, (
+        r"(strong|positive|encouraging|compelling) .{0,40}(data|results)",
+    )),
     Rule("approvazione farmaco", "su", 8, (
         r"fda approv", r"approved by the (u\.s\. )?fda", r"chmp (adopted a )?positive opinion",
         r"european commission approv", r"granted (marketing )?approval",

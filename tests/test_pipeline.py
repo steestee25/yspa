@@ -79,6 +79,7 @@ def test_alias_does_not_match_inside_words(conn):
     ("Moderna to replace Warner Bros. Discovery in the Nasdaq-100", "ingresso in indice"),
     ("SpaceX Reports Third Quarter 2026 Results", "risultati trimestrali"),
     ("Nike raises full-year guidance", "guidance alzata"),
+    ("Oncolytics Biotech Reports Strong Durability and Survival Data in Anal Cancer", "dati clinici positivi"),
     ("XYZ announces pricing of $500 million public offering", "aumento di capitale"),
 ])
 def test_rules(text, expected):
