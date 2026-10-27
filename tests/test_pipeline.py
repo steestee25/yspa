@@ -123,3 +123,24 @@ def test_unimportant_news_does_not_download_page(conn):
     raw = {"uid": "y", "source": "prnewswire", "url": "https://example.com/x", "tickers": [], "sec_items": [],
            "published_at": "2026-10-27T13:30:00+00:00", "title": "Company wins design award", "summary": ""}
     pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: pytest.fail("non doveva scaricare"))
+
+
+def test_human_time():
+    from datetime import datetime, timezone
+    from yspa.web.timefmt import human_time
+    now = datetime(2026, 10, 27, 16, 0, tzinfo=timezone.utc)
+    assert human_time("2026-10-27T14:15:00+00:00", now) == "oggi 15:15"   # Roma = UTC+1 dopo il 25 ottobre
+    assert human_time("2026-10-26T17:02:00+00:00", now) == "ieri 18:02"
+    assert human_time("2026-08-19T10:45:00+00:00", now) == "19 ago 12:45"  # ora legale: UTC+2
+    assert human_time("2025-12-01T10:00:00+00:00", now) == "1 dic 2025"
+
+
+def test_sort_by_importance_and_near_alerts(conn):
+    watchlist = db.get_watchlist(conn)
+    for raw in rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text()):
+        db.insert_news(conn, pipeline.enrich(raw, watchlist, page_reader=lambda url: ""))
+    by_score = [n["score"] for n in db.list_news(conn, "all")]
+    assert by_score == sorted(by_score, reverse=True)
+    recent = [n["published_at"] for n in db.list_news(conn, "all", sort="recenti")]
+    assert recent == sorted(recent, reverse=True)
+    assert all(not n["is_alert"] and n["score"] > 1 for n in db.near_alerts(conn))

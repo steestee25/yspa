@@ -2,80 +2,304 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YSPA – radar notizie</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Radar</title>
 <style>
-  :root { --bg:#f7f7f5; --card:#fff; --text:#1d1d1b; --muted:#6b6b66; --line:#e3e3de; --up:#1a7f37; --down:#c62828; --accent:#2f5bd3; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#141413; --card:#1f1f1d; --text:#ecece8; --muted:#9a9a93; --line:#33332f; --up:#4cc26a; --down:#ef6b6b; --accent:#7a9cff; } }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
-  main { max-width:960px; margin:0 auto; padding:16px; }
-  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
-  h1 { font-size:20px; margin:0; }
-  nav a { margin-right:12px; color:var(--muted); text-decoration:none; }
-  nav a.on { color:var(--accent); font-weight:600; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; margin:10px 0; }
-  .meta { color:var(--muted); font-size:13px; }
-  .score { font-weight:700; min-width:44px; display:inline-block; }
-  .su { color:var(--up); } .giù { color:var(--down); }
-  .tick { font-weight:600; margin-right:6px; }
-  a { color:var(--accent); }
-  button { font:inherit; padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--text); cursor:pointer; }
-  form.inline { display:inline; }
-  input, select { font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--text); max-width:100%; }
-  .wl { display:flex; flex-wrap:wrap; gap:8px; }
-  .wl span { border:1px solid var(--line); border-radius:6px; padding:2px 6px; background:var(--card); }
+  :root {
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --label: #000000;
+    --secondary: rgba(60, 60, 67, 0.6);
+    --tertiary: rgba(60, 60, 67, 0.3);
+    --separator: rgba(60, 60, 67, 0.18);
+    --fill: rgba(120, 120, 128, 0.12);
+    --bar: rgba(242, 242, 247, 0.8);
+    --blue: #007aff;
+    --up: #248a3d;
+    --up-tint: rgba(52, 199, 89, 0.15);
+    --down: #d70015;
+    --down-tint: rgba(255, 59, 48, 0.13);
+    --flat-tint: rgba(120, 120, 128, 0.12);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
+    --segment: #ffffff;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --card: #1c1c1e;
+      --label: #ffffff;
+      --secondary: rgba(235, 235, 245, 0.6);
+      --tertiary: rgba(235, 235, 245, 0.3);
+      --separator: rgba(84, 84, 88, 0.55);
+      --fill: rgba(120, 120, 128, 0.24);
+      --bar: rgba(0, 0, 0, 0.72);
+      --blue: #0a84ff;
+      --up: #30d158;
+      --up-tint: rgba(48, 209, 88, 0.18);
+      --down: #ff453a;
+      --down-tint: rgba(255, 69, 58, 0.18);
+      --flat-tint: rgba(120, 120, 128, 0.24);
+      --shadow: none;
+      --segment: #636366;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--label);
+    font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+  /* Barra superiore traslucida */
+  .bar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bar);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 0.5px solid var(--separator);
+  }
+  .bar .wrap { padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: 12px; }
+  .title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 2px; }
+  .subtitle { font-size: 13px; color: var(--secondary); }
+
+  /* Pulsanti: risposta immediata alla pressione */
+  button, .btn {
+    font: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform 160ms var(--ease-out), opacity 160ms ease;
+  }
+  button:active, .btn:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 2px;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 14px; border-radius: 999px;
+    font-size: 15px; font-weight: 600;
+  }
+  .pill-primary { background: var(--blue); color: #fff; }
+  .pill-tinted { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); }
+  .pill-plain { background: var(--fill); color: var(--label); }
+
+  /* Controllo a segmenti */
+  .segmented {
+    display: flex; margin-top: 12px; padding: 2px; border-radius: 9px; background: var(--fill);
+  }
+  .segmented a {
+    flex: 1; text-align: center; padding: 6px 4px; border-radius: 7px;
+    font-size: 13px; font-weight: 500; white-space: nowrap; color: var(--label);
+    transition: background-color 200ms ease;
+  }
+  .segmented a.on { background: var(--segment); font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04); }
+
+  .sortbar { display: flex; justify-content: flex-end; gap: 4px; margin: 14px 0 6px; font-size: 13px; color: var(--secondary); }
+  .sortbar a { padding: 2px 8px; border-radius: 6px; }
+  .sortbar a.on { color: var(--blue); font-weight: 600; background: color-mix(in srgb, var(--blue) 10%, transparent); }
+
+  /* Liste raggruppate come nelle Impostazioni */
+  .section-title {
+    margin: 26px 16px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--secondary);
+  }
+  .group { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .row { display: flex; gap: 12px; padding: 12px 16px; position: relative; }
+  .row + .row::before {
+    content: ""; position: absolute; top: 0; right: 0; left: 68px; border-top: 0.5px solid var(--separator);
+  }
+  .group.plain .row + .row::before { left: 16px; }
+
+  .score {
+    flex: none; width: 40px; height: 40px; border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;
+    background: var(--flat-tint); color: var(--secondary);
+  }
+  .score.su { background: var(--up-tint); color: var(--up); }
+  .score.giù { background: var(--down-tint); color: var(--down); }
+
+  .body { min-width: 0; flex: 1; }
+  .headline { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 15px; }
+  .ticker { font-weight: 700; }
+  .event { color: var(--secondary); }
+  .news-title {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    margin-top: 2px; font-size: 15px; line-height: 1.33; color: var(--label);
+  }
+  @media (hover: hover) and (pointer: fine) { a.news-title:hover { color: var(--blue); } }
+  .meta { margin-top: 4px; font-size: 13px; color: var(--secondary); }
+  .why { margin-top: 2px; font-size: 13px; color: var(--tertiary); overflow-wrap: anywhere; }
+  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .actions form { margin: 0; }
+  .answered { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--secondary); }
+  .answered.yes { color: var(--blue); }
+
+  /* Stato vuoto */
+  .empty { text-align: center; padding: 40px 24px 8px; }
+  .empty svg { color: var(--tertiary); }
+  .empty h2 { font-size: 22px; font-weight: 700; margin: 12px 0 6px; letter-spacing: -0.01em; }
+  .empty p { margin: 0 auto; max-width: 380px; font-size: 15px; color: var(--secondary); }
+
+  /* Watchlist */
+  .wl-row { align-items: center; }
+  .wl-name { flex: 1; min-width: 0; color: var(--secondary); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag { font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 5px; background: var(--fill); color: var(--secondary); }
+  .remove { display: grid; place-items: center; width: 32px; height: 32px; margin: -6px -6px -6px 0; background: none; color: var(--down); }
+  .field { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 44px; position: relative; }
+  .field + .field::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; border-top: 0.5px solid var(--separator); }
+  .field label { width: 72px; flex: none; font-size: 15px; }
+  .field input, .field select {
+    flex: 1; min-width: 0; border: 0; background: none; color: var(--label); font: inherit; font-size: 15px; padding: 11px 0;
+  }
+  .field input::placeholder { color: var(--tertiary); }
+  .form-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+  .footer { padding: 32px 16px 48px; text-align: center; font-size: 12px; color: var(--tertiary); }
+
+  @media (prefers-reduced-motion: reduce) {
+    button, .btn, .segmented a { transition: none; }
+    button:active, .btn:active { transform: none; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>YSPA – radar notizie</h1>
-    <form method="post" action="/fetch"><button>Controlla ora</button></form>
-  </header>
-  <nav>
-    {% for key, label in views.items() %}<a href="/?view={{ key }}" class="{{ 'on' if key == view else '' }}">{{ label }}</a>{% endfor %}
-  </nav>
 
-  {% if view == "watchlist" %}
-  <div class="card">
-    <div class="wl">
-      {% for w in watchlist %}
-      <span>{{ w.ticker }} · {{ w.name }}
-        <form class="inline" method="post" action="/watchlist/{{ w.ticker }}/delete"><button title="Rimuovi">×</button></form>
-      </span>
-      {% endfor %}
+{% macro news_row(n) %}
+<div class="row">
+  <div class="score {{ n.direction }}" title="Importanza {{ n.score }} su 10, direzione attesa: {{ n.direction }}">{{ n.score }}</div>
+  <div class="body">
+    <div class="headline">
+      {% for t in n.tickers %}<span class="ticker">{{ t }}</span>{% endfor %}
+      <span class="event">{{ n.event_type }}</span>
     </div>
-    <form method="post" action="/watchlist" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px;">
-      <input name="ticker" placeholder="Ticker (es. NKE)" required>
-      <input name="name" placeholder="Nome (es. Nike)" required>
-      <input name="aliases" placeholder="Alias, separati da virgola">
-      <select name="market"><option>US</option><option>EU</option></select>
-      <button>Aggiungi</button>
-    </form>
-  </div>
-  {% endif %}
-
-  {% for n in news %}
-  <div class="card">
-    <div>
-      <span class="score {{ n.direction }}">{{ n.score }}/10</span>
-      {% for t in n.tickers %}<span class="tick">{{ t }}</span>{% endfor %}
-      <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title }}</a>
-    </div>
-    <div class="meta">{{ n.event_type }} · direzione {{ n.direction }} · {{ n.reason }} · {{ n.source }} · {{ n.published_at }}</div>
-    {% if n.is_alert %}
-    <div style="margin-top:6px">
-      {% if n.feedback %}<span class="meta">Risposta: {{ n.feedback }}</span>{% else %}
-      <form class="inline" method="post" action="/news/{{ n.id }}/feedback"><input type="hidden" name="view" value="{{ view }}"><button name="value" value="interessa">Mi interessa</button></form>
-      <form class="inline" method="post" action="/news/{{ n.id }}/feedback"><input type="hidden" name="view" value="{{ view }}"><button name="value" value="ignora">Ignora</button></form>
+    <a class="news-title" href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title }}</a>
+    <div class="meta">{{ n.published_at | when }} · {{ n.source }}</div>
+    {% if n.reason %}<div class="why">{{ n.reason }}</div>{% endif %}
+    {% if n.score >= feedback_min_score and n.tickers %}
+      {% if n.feedback == "interessa" %}<div class="answered yes">Ti interessa</div>
+      {% elif n.feedback == "ignora" %}<div class="answered">Ignorata</div>
+      {% else %}
+      <div class="actions">
+        <form method="post" action="/news/{{ n.id }}/feedback">
+          <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
+          <button class="pill pill-primary" name="value" value="interessa">Mi interessa</button>
+        </form>
+        <form method="post" action="/news/{{ n.id }}/feedback">
+          <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
+          <button class="pill pill-plain" name="value" value="ignora">Ignora</button>
+        </form>
+      </div>
       {% endif %}
-    </div>
     {% endif %}
   </div>
+</div>
+{% endmacro %}
+
+<header class="bar">
+  <div class="wrap">
+    <div class="title-row">
+      <div>
+        <h1>Radar</h1>
+        <div class="subtitle">{% if last_fetch %}Ultimo controllo {{ last_fetch | when }}{% else %}Nessun controllo ancora{% endif %}</div>
+      </div>
+      <form method="post" action="/fetch" id="fetch-form">
+        <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
+        <button class="pill pill-tinted" id="fetch-btn">Controlla ora</button>
+      </form>
+    </div>
+    <nav class="segmented" aria-label="Viste">
+      {% for key, label in views.items() %}
+      <a href="/?view={{ key }}&sort={{ sort }}" class="{{ 'on' if key == view else '' }}" {% if key == view %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  {% if view == "watchlist" %}
+    <div class="section-title">{{ watchlist | length }} titoli seguiti</div>
+    <div class="group plain">
+      {% for w in watchlist %}
+      <div class="row wl-row">
+        <span class="ticker">{{ w.ticker }}</span>
+        <span class="wl-name">{{ w.name }}</span>
+        <span class="tag">{{ w.market }}</span>
+        <form method="post" action="/watchlist/{{ w.ticker }}/delete">
+          <button class="remove" aria-label="Rimuovi {{ w.ticker }}" title="Rimuovi">
+            <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="currentColor"/><rect x="6" y="10" width="10" height="2" rx="1" fill="#fff"/></svg>
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="section-title">Aggiungi titolo</div>
+    <form method="post" action="/watchlist">
+      <div class="group">
+        <div class="field"><label for="f-ticker">Ticker</label><input id="f-ticker" name="ticker" placeholder="NKE" required autocapitalize="characters"></div>
+        <div class="field"><label for="f-name">Nome</label><input id="f-name" name="name" placeholder="Nike" required></div>
+        <div class="field"><label for="f-alias">Alias</label><input id="f-alias" name="aliases" placeholder="Nike Inc., separati da virgola"></div>
+        <div class="field"><label for="f-market">Mercato</label>
+          <select id="f-market" name="market"><option value="US">Stati Uniti</option><option value="EU">Europa</option></select>
+        </div>
+      </div>
+      <div class="form-actions"><button class="pill pill-primary">Aggiungi</button></div>
+    </form>
+
   {% else %}
-  <p class="meta">Nessuna notizia. Premi "Controlla ora".</p>
-  {% endfor %}
+    {% if news %}
+      <div class="sortbar">
+        {% for key, label in sorts.items() %}
+        <a href="/?view={{ view }}&sort={{ key }}" class="{{ 'on' if key == sort else '' }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      <div class="group">
+        {% for n in news %}{{ news_row(n) }}{% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="28" cy="28" r="25"/><circle cx="28" cy="28" r="16"/><circle cx="28" cy="28" r="7"/>
+          <path d="M28 28 L45 11" stroke-linecap="round"/>
+        </svg>
+        {% if view == "alerts" %}
+          <h2>Nessuna segnalazione</h2>
+          <p>Nessuna notizia sui titoli della tua watchlist ha superato la soglia. Il radar continua a controllare.</p>
+        {% elif view == "discover" %}
+          <h2>Nessuna scoperta</h2>
+          <p>Qui compaiono solo eventi forti (8/10 o più) su titoli che non segui ancora.</p>
+        {% else %}
+          <h2>Nessuna notizia</h2>
+          <p>Premi «Controlla ora» per avviare la prima raccolta.</p>
+        {% endif %}
+      </div>
+      {% if near %}
+        <div class="section-title">Le più rilevanti, sotto soglia</div>
+        <div class="group">
+          {% for n in near %}{{ news_row(n) }}{% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+
+  <div class="footer">Il radar segnala, non consiglia: la decisione resta tua.</div>
 </main>
+
+<script>
+  // Il controllo dura qualche secondo: lo stato del pulsante conferma che è partito.
+  document.getElementById("fetch-form").addEventListener("submit", () => {
+    const btn = document.getElementById("fetch-btn");
+    btn.disabled = true;
+    btn.textContent = "Controllo…";
+  });
+</script>
 </body>
 </html>

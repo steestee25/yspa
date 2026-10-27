@@ -90,16 +90,33 @@ def insert_news(conn, item: dict) -> bool:
     return cur.rowcount == 1
 
 
-def list_news(conn, view: str = "all", limit: int = 200) -> list[dict]:
+SORTS = {
+    "importanza": "score DESC, published_at DESC",
+    "recenti": "published_at DESC",
+}
+
+
+def list_news(conn, view: str = "all", limit: int = 200, sort: str = "importanza") -> list[dict]:
     where = {
         "alerts": "WHERE is_alert = 1",
         "watchlist": "WHERE in_watchlist = 1",
         "discover": "WHERE is_alert = 1 AND in_watchlist = 0",
     }.get(view, "")
+    order = SORTS.get(sort, SORTS["importanza"])
+    rows = conn.execute(f"SELECT * FROM news {where} ORDER BY {order} LIMIT ?", (limit,)).fetchall()
+    return [{**dict(r), "tickers": json.loads(r["tickers"])} for r in rows]
+
+
+def near_alerts(conn, limit: int = 5) -> list[dict]:
+    """Le notizie non segnalate più importanti: da mostrare quando non ci sono segnalazioni."""
     rows = conn.execute(
-        f"SELECT * FROM news {where} ORDER BY published_at DESC LIMIT ?", (limit,)
+        "SELECT * FROM news WHERE is_alert = 0 AND score > 1 ORDER BY score DESC, published_at DESC LIMIT ?", (limit,)
     ).fetchall()
     return [{**dict(r), "tickers": json.loads(r["tickers"])} for r in rows]
+
+
+def last_fetch(conn) -> str | None:
+    return conn.execute("SELECT MAX(fetched_at) FROM news").fetchone()[0]
 
 
 def set_feedback(conn, news_id: int, feedback: str) -> None:

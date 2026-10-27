@@ -9,6 +9,9 @@ SEC_USER_AGENT = os.environ.get("YSPA_SEC_USER_AGENT", "")
 
 FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "")
 
+# Fuso orario in cui mostrare gli orari delle notizie.
+TIMEZONE = os.environ.get("YSPA_TIMEZONE", "Europe/Rome")
+
 # Moduli EDGAR da seguire: 8-K (aziende USA), 6-K (aziende estere quotate in USA, es. BSP),
 # SC 13D (qualcuno supera il 5% con intenzioni attive).
 SEC_FORMS = ["8-K", "6-K", "SC 13D"]
