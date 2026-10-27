@@ -1,7 +1,8 @@
 """Raccolta -> riconoscimento ticker -> classificazione -> salvataggio."""
 import logging
+from datetime import datetime
 
-from . import config, db
+from . import config, db, prices
 from .classify import classify
 from .sources import finnhub, rss, sec_edgar
 from .sources.common import http_get, strip_html
@@ -67,6 +68,28 @@ def collect(watchlist: list[dict]) -> list[dict]:
     return raw_items
 
 
+def update_prices(conn, fetch_chart=prices.fetch_chart) -> int:
+    """Aggiorna prezzo prima della notizia e prezzo attuale. Un solo grafico per ticker a giro."""
+    news = db.news_needing_prices(conn, config.PRICE_MIN_SCORE, config.PRICE_MAX_AGE_DAYS)
+    charts: dict[str, prices.Chart | None] = {}
+    updated = 0
+    for n in news:
+        symbol = n["tickers"][0]
+        if symbol not in charts:
+            oldest = min(x["published_at"] for x in news if x["tickers"][0] == symbol)
+            try:
+                charts[symbol] = fetch_chart(symbol, datetime.fromisoformat(oldest))
+            except Exception as exc:
+                log.warning("Prezzo di %s non disponibile: %s", symbol, exc)
+                charts[symbol] = None
+        chart = charts[symbol]
+        move = prices.move_since(chart, n["published_at"]) if chart else None
+        if move:
+            db.set_prices(conn, n["id"], move)
+            updated += 1
+    return updated
+
+
 def run_once(conn) -> list[dict]:
     """Esegue un giro completo e restituisce le nuove segnalazioni."""
     watchlist = db.get_watchlist(conn)
@@ -75,4 +98,5 @@ def run_once(conn) -> list[dict]:
         item = enrich(raw, watchlist)
         if db.insert_news(conn, item) and item["is_alert"]:
             new_alerts.append(item)
+    update_prices(conn)
     return new_alerts

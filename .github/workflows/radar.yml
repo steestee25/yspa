@@ -23,3 +23,9 @@ jobs:
           YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT || 'YSPA radar 223326988+steestee25@users.noreply.github.com' }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: python -m yspa fetch --report
+      - name: Prezzi sui casi reali
+        run: |
+          python -m yspa price MRNA --since 2026-08-19T12:00:00+00:00  # prima dell'apertura del 19/08
+          python -m yspa price BSP  --since 2026-10-14T11:00:00+00:00  # prima dell'apertura del 14/10
+          python -m yspa price SPCX --since 2026-10-20T20:05:00+00:00  # dopo la chiusura del 20/10
+          python -m yspa price RHM.DE --since 2026-10-20T08:00:00+00:00  # verifica fonte europea

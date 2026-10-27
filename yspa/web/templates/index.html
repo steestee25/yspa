@@ -79,6 +79,11 @@
   .title { display: block; margin-top: 4px; font-size: 17px; line-height: 1.4; }
   .meta { margin-top: 6px; font-size: 13px; color: var(--muted); }
   .why { color: var(--faint); }
+  .price { margin-top: 10px; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .price .pct { font-weight: 600; }
+  .price .pct.up { color: var(--up); }
+  .price .pct.down { color: var(--down); }
+  .price .rest { color: var(--muted); }
   .actions { display: flex; gap: 20px; margin-top: 12px; }
   .actions form { margin: 0; }
   .actions .ignore { color: var(--muted); font-size: 15px; }
@@ -133,6 +138,12 @@
     <div class="kicker">{% for t in n.tickers %}<b>{{ t }}</b>{% endfor %}{{ n.event_type }}</div>
     <a class="title" href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title | calm }}</a>
     <div class="meta">{{ n.published_at | when }} · {{ n.source }}{% if n.reason %} · <span class="why">{{ n.reason }}</span>{% endif %}</div>
+    {% if n.change_pct is not none %}
+    <div class="price" title="Prezzo prima della notizia → prezzo delle {{ n.price_time | when }}">
+      <span class="pct {{ 'up' if n.change_pct > 0 else 'down' if n.change_pct < 0 else '' }}">{{ n.change_pct | pct }}</span>
+      <span class="rest">dalla notizia · {{ n.price_before | num }} → {{ n.price_now | num }} {{ n.currency }}</span>
+    </div>
+    {% endif %}
     {% if n.score >= feedback_min_score and n.tickers %}
       {% if n.feedback == "interessa" %}<div class="answer">Ti interessa</div>
       {% elif n.feedback == "ignora" %}<div class="answer">Ignorata</div>
@@ -224,7 +235,7 @@
   {% endif %}
   </main>
 
-  <footer>Il radar segnala, non consiglia. La decisione resta tua.</footer>
+  <footer>Il radar segnala, non consiglia. La decisione resta tua.<br>Prezzi da Yahoo Finance, anche con 15 minuti di ritardo.</footer>
 </div>
 
 <script>

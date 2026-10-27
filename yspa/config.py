@@ -26,6 +26,10 @@ RSS_FEEDS = {
 ALERT_SCORE_WATCHLIST = 5   # titolo in watchlist
 ALERT_SCORE_DISCOVERY = 8   # titolo fuori watchlist: solo eventi forti
 
+# Prezzi: per quali notizie aggiornarli a ogni giro.
+PRICE_MIN_SCORE = 5
+PRICE_MAX_AGE_DAYS = 5
+
 # Watchlist iniziale: ticker, nome, alias usati per riconoscerlo nel testo, mercato.
 DEFAULT_WATCHLIST = [
     ("NKE", "Nike", ["Nike"], "US"),

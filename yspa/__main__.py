@@ -1,13 +1,15 @@
 """Uso:
     python -m yspa fetch            # un giro di raccolta
     python -m yspa run --every 60   # raccolta continua, ogni 60 secondi
+    python -m yspa price BSP --since 2026-10-14T11:00:00+00:00   # quanto si è mosso da allora
 """
 import argparse
 import logging
 import time
 from collections import Counter
+from datetime import datetime
 
-from . import db, pipeline
+from . import db, pipeline, prices
 
 
 def print_alerts(alerts: list[dict]) -> None:
@@ -39,11 +41,19 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     fetch = sub.add_parser("fetch")
     fetch.add_argument("--report", action="store_true", help="stampa un riepilogo alla fine")
+    price = sub.add_parser("price")
+    price.add_argument("symbol")
+    price.add_argument("--since", required=True, help="istante della notizia, ISO 8601 con fuso orario")
     run = sub.add_parser("run")
     run.add_argument("--every", type=int, default=60, help="secondi tra un giro e l'altro")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if args.command == "price":
+        chart = prices.fetch_chart(args.symbol, datetime.fromisoformat(args.since))
+        move = prices.move_since(chart, args.since) if chart else None
+        print(f"{args.symbol}: {move or 'prezzo non disponibile'}")
+        return
     conn = db.connect()
     db.seed_watchlist(conn)
 

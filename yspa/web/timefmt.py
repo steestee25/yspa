@@ -30,3 +30,17 @@ def calm_title(title: str) -> str:
         lowered = title.lower()
         return lowered[:1].upper() + lowered[1:]
     return title
+
+
+def number(value: float | None, decimals: int = 2) -> str:
+    """Formato italiano: 1234.5 -> '1.234,50'."""
+    if value is None:
+        return ""
+    return f"{value:,.{decimals}f}".replace(",", "\u2009").replace(".", ",").replace("\u2009", ".")
+
+
+def percent(value: float | None) -> str:
+    if value is None:
+        return ""
+    sign = "+" if value > 0 else "−" if value < 0 else ""
+    return f"{sign}{number(abs(value), 1)}%"

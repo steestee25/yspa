@@ -1,7 +1,7 @@
 """Database SQLite: watchlist e notizie."""
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import config
@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS news (
 CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC);
 """
 
+# Colonne aggiunte dopo la prima versione: si aggiungono ai database già esistenti.
+PRICE_COLUMNS = {
+    "price_before": "REAL",
+    "price_now": "REAL",
+    "change_pct": "REAL",
+    "currency": "TEXT",
+    "price_time": "TEXT",
+}
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -47,6 +56,11 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(news)")}
+    for column, kind in PRICE_COLUMNS.items():
+        if column not in existing:
+            conn.execute(f"ALTER TABLE news ADD COLUMN {column} {kind}")
+    conn.commit()
     return conn
 
 
@@ -117,6 +131,25 @@ def near_alerts(conn, limit: int = 5) -> list[dict]:
 
 def last_fetch(conn) -> str | None:
     return conn.execute("SELECT MAX(fetched_at) FROM news").fetchone()[0]
+
+
+def news_needing_prices(conn, min_score: int, max_age_days: int) -> list[dict]:
+    """Notizie con ticker abbastanza importanti e recenti da meritare il prezzo aggiornato."""
+    since = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat(timespec="seconds")
+    rows = conn.execute(
+        "SELECT * FROM news WHERE tickers != '[]' AND (score >= ? OR is_alert = 1) AND published_at >= ?",
+        (min_score, since),
+    ).fetchall()
+    return [{**dict(r), "tickers": json.loads(r["tickers"])} for r in rows]
+
+
+def set_prices(conn, news_id: int, move: dict) -> None:
+    conn.execute(
+        """UPDATE news SET price_before = :price_before, price_now = :price_now, change_pct = :change_pct,
+                           currency = :currency, price_time = :price_time WHERE id = :id""",
+        {**move, "id": news_id},
+    )
+    conn.commit()
 
 
 def set_feedback(conn, news_id: int, feedback: str) -> None:
