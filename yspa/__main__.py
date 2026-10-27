@@ -50,7 +50,11 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if args.command == "price":
-        chart = prices.fetch_chart(args.symbol, datetime.fromisoformat(args.since))
+        try:
+            chart = prices.fetch_chart(args.symbol, datetime.fromisoformat(args.since))
+        except Exception as exc:
+            print(f"{args.symbol}: prezzo non disponibile ({exc.__class__.__name__}: {str(exc).splitlines()[0]})")
+            return
         move = prices.move_since(chart, args.since) if chart else None
         print(f"{args.symbol}: {move or 'prezzo non disponibile'}")
         return
