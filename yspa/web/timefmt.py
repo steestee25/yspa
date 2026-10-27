@@ -21,3 +21,12 @@ def human_time(iso: str | None, now: datetime | None = None) -> str:
         return f"ieri {clock}"
     label = f"{when.day} {MONTHS[when.month - 1]}"
     return f"{label} {clock}" if when.year == today.year else f"{label} {when.year}"
+
+
+def calm_title(title: str) -> str:
+    """Un titolo tutto in maiuscolo diventa 'Frase normale': in un elenco sobrio, il maiuscolo urla."""
+    letters = [c for c in title if c.isalpha()]
+    if letters and sum(c.isupper() for c in letters) / len(letters) > 0.8:
+        lowered = title.lower()
+        return lowered[:1].upper() + lowered[1:]
+    return title

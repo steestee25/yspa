@@ -144,3 +144,9 @@ def test_sort_by_importance_and_near_alerts(conn):
     recent = [n["published_at"] for n in db.list_news(conn, "all", sort="recenti")]
     assert recent == sorted(recent, reverse=True)
     assert all(not n["is_alert"] and n["score"] > 1 for n in db.near_alerts(conn))
+
+
+def test_calm_title():
+    from yspa.web.timefmt import calm_title
+    assert calm_title("FINAL RESULTS OF THE OFFER: 89.42%") == "Final results of the offer: 89.42%"
+    assert calm_title("NASDAQ Grants Rekor Systems Extension") == "NASDAQ Grants Rekor Systems Extension"

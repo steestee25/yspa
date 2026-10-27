@@ -10,11 +10,12 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import config, db, pipeline
-from .timefmt import human_time
+from .timefmt import calm_title, human_time
 
 app = FastAPI(title="YSPA")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 templates.env.filters["when"] = human_time
+templates.env.filters["calm"] = calm_title
 conn = db.connect()
 db.seed_watchlist(conn)
 

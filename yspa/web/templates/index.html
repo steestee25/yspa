@@ -7,42 +7,25 @@
 <title>Radar</title>
 <style>
   :root {
-    --bg: #f2f2f7;
-    --card: #ffffff;
-    --label: #000000;
-    --secondary: rgba(60, 60, 67, 0.6);
-    --tertiary: rgba(60, 60, 67, 0.3);
-    --separator: rgba(60, 60, 67, 0.18);
-    --fill: rgba(120, 120, 128, 0.12);
-    --bar: rgba(242, 242, 247, 0.8);
-    --blue: #007aff;
-    --up: #248a3d;
-    --up-tint: rgba(52, 199, 89, 0.15);
+    --bg: #ffffff;
+    --text: #1d1d1f;
+    --muted: #86868b;
+    --faint: #aeaeb2;
+    --line: #e8e8ed;
+    --accent: #0066cc;
+    --up: #1d8a3a;
     --down: #d70015;
-    --down-tint: rgba(255, 59, 48, 0.13);
-    --flat-tint: rgba(120, 120, 128, 0.12);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
-    --segment: #ffffff;
-    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #000000;
-      --card: #1c1c1e;
-      --label: #ffffff;
-      --secondary: rgba(235, 235, 245, 0.6);
-      --tertiary: rgba(235, 235, 245, 0.3);
-      --separator: rgba(84, 84, 88, 0.55);
-      --fill: rgba(120, 120, 128, 0.24);
-      --bar: rgba(0, 0, 0, 0.72);
-      --blue: #0a84ff;
+      --text: #f5f5f7;
+      --muted: #86868b;
+      --faint: #6e6e73;
+      --line: #2c2c2e;
+      --accent: #2997ff;
       --up: #30d158;
-      --up-tint: rgba(48, 209, 88, 0.18);
       --down: #ff453a;
-      --down-tint: rgba(255, 69, 58, 0.18);
-      --flat-tint: rgba(120, 120, 128, 0.24);
-      --shadow: none;
-      --segment: #636366;
     }
   }
 
@@ -51,254 +34,204 @@
   body {
     margin: 0;
     background: var(--bg);
-    color: var(--label);
-    font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
-    letter-spacing: -0.01em;
+    color: var(--text);
+    font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif;
+    letter-spacing: -0.022em;
     -webkit-font-smoothing: antialiased;
   }
   a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 24px; }
 
-  /* Barra superiore traslucida */
-  .bar {
-    position: sticky; top: 0; z-index: 10;
-    background: var(--bar);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 0.5px solid var(--separator);
-  }
-  .bar .wrap { padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: 12px; }
-  .title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-  h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 2px; }
-  .subtitle { font-size: 13px; color: var(--secondary); }
+  header { padding: max(56px, env(safe-area-inset-top)) 0 0; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  h1 { margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.03em; }
+  .status { margin-top: 4px; font-size: 14px; color: var(--muted); }
 
-  /* Pulsanti: risposta immediata alla pressione */
-  button, .btn {
-    font: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
-    transition: transform 160ms var(--ease-out), opacity 160ms ease;
+  button {
+    font: inherit; letter-spacing: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
-  button:active, .btn:active { transform: scale(0.97); }
-  button:disabled { opacity: 0.5; cursor: default; }
-  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 2px;
+  button:disabled { color: var(--muted); cursor: default; }
+  .link { color: var(--accent); font-size: 15px; }
+  @media (hover: hover) and (pointer: fine) {
+    .link:hover, .title:hover, nav a:hover, .sort a:hover { text-decoration: underline; text-underline-offset: 3px; }
   }
-  .pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    height: 32px; padding: 0 14px; border-radius: 999px;
-    font-size: 15px; font-weight: 600;
-  }
-  .pill-primary { background: var(--blue); color: #fff; }
-  .pill-tinted { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); }
-  .pill-plain { background: var(--fill); color: var(--label); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
 
-  /* Controllo a segmenti */
-  .segmented {
-    display: flex; margin-top: 12px; padding: 2px; border-radius: 9px; background: var(--fill);
-  }
-  .segmented a {
-    flex: 1; text-align: center; padding: 6px 4px; border-radius: 7px;
-    font-size: 13px; font-weight: 500; white-space: nowrap; color: var(--label);
-    transition: background-color 200ms ease;
-  }
-  .segmented a.on { background: var(--segment); font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04); }
+  nav { display: flex; gap: 24px; margin-top: 40px; font-size: 15px; overflow-x: auto; scrollbar-width: none; }
+  nav a { color: var(--muted); white-space: nowrap; }
+  nav a.on { color: var(--text); font-weight: 500; }
 
-  .sortbar { display: flex; justify-content: flex-end; gap: 4px; margin: 14px 0 6px; font-size: 13px; color: var(--secondary); }
-  .sortbar a { padding: 2px 8px; border-radius: 6px; }
-  .sortbar a.on { color: var(--blue); font-weight: 600; background: color-mix(in srgb, var(--blue) 10%, transparent); }
+  .sort { display: flex; gap: 16px; justify-content: flex-end; margin-top: 32px; font-size: 13px; color: var(--muted); }
+  .sort a.on { color: var(--text); }
 
-  /* Liste raggruppate come nelle Impostazioni */
-  .section-title {
-    margin: 26px 16px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--secondary);
-  }
-  .group { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
-  .row { display: flex; gap: 12px; padding: 12px 16px; position: relative; }
-  .row + .row::before {
-    content: ""; position: absolute; top: 0; right: 0; left: 68px; border-top: 0.5px solid var(--separator);
-  }
-  .group.plain .row + .row::before { left: 16px; }
+  /* Elenco: solo tipografia e linee sottili */
+  .list { margin: 12px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .item { display: grid; grid-template-columns: 44px 1fr; gap: 0 16px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .score { font-size: 28px; line-height: 1; font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--faint); }
+  .score.strong { color: var(--text); }
+  .arrow { display: block; margin-top: 6px; font-size: 13px; font-weight: 500; }
+  .arrow.su { color: var(--up); }
+  .arrow.giù { color: var(--down); }
 
-  .score {
-    flex: none; width: 40px; height: 40px; border-radius: 10px;
-    display: grid; place-items: center;
-    font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;
-    background: var(--flat-tint); color: var(--secondary);
-  }
-  .score.su { background: var(--up-tint); color: var(--up); }
-  .score.giù { background: var(--down-tint); color: var(--down); }
-
-  .body { min-width: 0; flex: 1; }
-  .headline { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 15px; }
-  .ticker { font-weight: 700; }
-  .event { color: var(--secondary); }
-  .news-title {
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    margin-top: 2px; font-size: 15px; line-height: 1.33; color: var(--label);
-  }
-  @media (hover: hover) and (pointer: fine) { a.news-title:hover { color: var(--blue); } }
-  .meta { margin-top: 4px; font-size: 13px; color: var(--secondary); }
-  .why { margin-top: 2px; font-size: 13px; color: var(--tertiary); overflow-wrap: anywhere; }
-  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .kicker { font-size: 13px; color: var(--muted); }
+  .kicker b { color: var(--text); font-weight: 600; margin-right: 6px; letter-spacing: 0; }
+  .title { display: block; margin-top: 4px; font-size: 17px; line-height: 1.4; }
+  .meta { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .why { color: var(--faint); }
+  .actions { display: flex; gap: 20px; margin-top: 12px; }
   .actions form { margin: 0; }
-  .answered { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--secondary); }
-  .answered.yes { color: var(--blue); }
+  .actions .ignore { color: var(--muted); font-size: 15px; }
+  .answer { margin-top: 12px; font-size: 13px; color: var(--muted); }
 
-  /* Stato vuoto */
-  .empty { text-align: center; padding: 40px 24px 8px; }
-  .empty svg { color: var(--tertiary); }
-  .empty h2 { font-size: 22px; font-weight: 700; margin: 12px 0 6px; letter-spacing: -0.01em; }
-  .empty p { margin: 0 auto; max-width: 380px; font-size: 15px; color: var(--secondary); }
+  .empty { padding: 72px 0 8px; text-align: center; }
+  .empty h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
+  .empty p { margin: 8px auto 0; max-width: 420px; font-size: 15px; color: var(--muted); }
+  .subhead { margin: 64px 0 0; font-size: 13px; color: var(--muted); }
 
   /* Watchlist */
-  .wl-row { align-items: center; }
-  .wl-name { flex: 1; min-width: 0; color: var(--secondary); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tag { font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 5px; background: var(--fill); color: var(--secondary); }
-  .remove { display: grid; place-items: center; width: 32px; height: 32px; margin: -6px -6px -6px 0; background: none; color: var(--down); }
-  .field { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 44px; position: relative; }
-  .field + .field::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; border-top: 0.5px solid var(--separator); }
-  .field label { width: 72px; flex: none; font-size: 15px; }
-  .field input, .field select {
-    flex: 1; min-width: 0; border: 0; background: none; color: var(--label); font: inherit; font-size: 15px; padding: 11px 0;
+  .wl { display: flex; align-items: baseline; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .wl b { font-weight: 600; min-width: 92px; }
+  .wl .name { flex: 1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl .market { font-size: 13px; color: var(--faint); }
+  .wl form { margin: 0; }
+  .wl .remove { font-size: 13px; color: var(--muted); }
+
+  .add { margin-top: 64px; }
+  .add h2 { margin: 0 0 8px; font-size: 13px; font-weight: 400; color: var(--muted); }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  .fields input, .fields select {
+    width: 100%; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    background: none; color: var(--text); font: inherit; font-size: 15px; letter-spacing: inherit;
+    -webkit-appearance: none; appearance: none;
   }
-  .field input::placeholder { color: var(--tertiary); }
-  .form-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+  .fields input::placeholder { color: var(--faint); }
+  .fields input:focus, .fields select:focus { outline: none; border-bottom-color: var(--text); }
+  .fields .wide { grid-column: 1 / -1; }
+  .add .submit { margin-top: 20px; }
 
-  .footer { padding: 32px 16px 48px; text-align: center; font-size: 12px; color: var(--tertiary); }
+  footer { padding: 96px 0 48px; font-size: 12px; color: var(--faint); text-align: center; }
 
-  @media (prefers-reduced-motion: reduce) {
-    button, .btn, .segmented a { transition: none; }
-    button:active, .btn:active { transform: none; }
+  @media (max-width: 480px) {
+    header { padding-top: max(32px, env(safe-area-inset-top)); }
+    h1 { font-size: 28px; }
+    nav { margin-top: 28px; gap: 20px; }
+    .fields { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 
-{% macro news_row(n) %}
-<div class="row">
-  <div class="score {{ n.direction }}" title="Importanza {{ n.score }} su 10, direzione attesa: {{ n.direction }}">{{ n.score }}</div>
-  <div class="body">
-    <div class="headline">
-      {% for t in n.tickers %}<span class="ticker">{{ t }}</span>{% endfor %}
-      <span class="event">{{ n.event_type }}</span>
-    </div>
-    <a class="news-title" href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title }}</a>
-    <div class="meta">{{ n.published_at | when }} · {{ n.source }}</div>
-    {% if n.reason %}<div class="why">{{ n.reason }}</div>{% endif %}
+{% macro news_item(n) %}
+<li class="item">
+  <div class="score {{ 'strong' if n.score >= feedback_min_score else '' }}" title="Importanza {{ n.score }} su 10">
+    {{ n.score }}
+    {% if n.direction == "su" %}<span class="arrow su" aria-label="attesa al rialzo">↑</span>
+    {% elif n.direction == "giù" %}<span class="arrow giù" aria-label="attesa al ribasso">↓</span>{% endif %}
+  </div>
+  <div>
+    <div class="kicker">{% for t in n.tickers %}<b>{{ t }}</b>{% endfor %}{{ n.event_type }}</div>
+    <a class="title" href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title | calm }}</a>
+    <div class="meta">{{ n.published_at | when }} · {{ n.source }}{% if n.reason %} · <span class="why">{{ n.reason }}</span>{% endif %}</div>
     {% if n.score >= feedback_min_score and n.tickers %}
-      {% if n.feedback == "interessa" %}<div class="answered yes">Ti interessa</div>
-      {% elif n.feedback == "ignora" %}<div class="answered">Ignorata</div>
+      {% if n.feedback == "interessa" %}<div class="answer">Ti interessa</div>
+      {% elif n.feedback == "ignora" %}<div class="answer">Ignorata</div>
       {% else %}
       <div class="actions">
         <form method="post" action="/news/{{ n.id }}/feedback">
           <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
-          <button class="pill pill-primary" name="value" value="interessa">Mi interessa</button>
+          <button class="link" name="value" value="interessa">Mi interessa</button>
         </form>
         <form method="post" action="/news/{{ n.id }}/feedback">
           <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
-          <button class="pill pill-plain" name="value" value="ignora">Ignora</button>
+          <button class="ignore" name="value" value="ignora">Ignora</button>
         </form>
       </div>
       {% endif %}
     {% endif %}
   </div>
-</div>
+</li>
 {% endmacro %}
 
-<header class="bar">
-  <div class="wrap">
-    <div class="title-row">
-      <div>
-        <h1>Radar</h1>
-        <div class="subtitle">{% if last_fetch %}Ultimo controllo {{ last_fetch | when }}{% else %}Nessun controllo ancora{% endif %}</div>
-      </div>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <h1>Radar</h1>
       <form method="post" action="/fetch" id="fetch-form">
         <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
-        <button class="pill pill-tinted" id="fetch-btn">Controlla ora</button>
+        <button class="link" id="fetch-btn">Controlla ora</button>
       </form>
     </div>
-    <nav class="segmented" aria-label="Viste">
+    <div class="status">{% if last_fetch %}Ultimo controllo {{ last_fetch | when }}{% else %}Nessun controllo ancora{% endif %}</div>
+    <nav aria-label="Viste">
       {% for key, label in views.items() %}
       <a href="/?view={{ key }}&sort={{ sort }}" class="{{ 'on' if key == view else '' }}" {% if key == view %}aria-current="page"{% endif %}>{{ label }}</a>
       {% endfor %}
     </nav>
-  </div>
-</header>
+  </header>
 
-<main class="wrap">
+  <main>
   {% if view == "watchlist" %}
-    <div class="section-title">{{ watchlist | length }} titoli seguiti</div>
-    <div class="group plain">
+    <div class="list">
       {% for w in watchlist %}
-      <div class="row wl-row">
-        <span class="ticker">{{ w.ticker }}</span>
-        <span class="wl-name">{{ w.name }}</span>
-        <span class="tag">{{ w.market }}</span>
+      <div class="wl">
+        <b>{{ w.ticker }}</b>
+        <span class="name">{{ w.name }}</span>
+        <span class="market">{{ w.market }}</span>
         <form method="post" action="/watchlist/{{ w.ticker }}/delete">
-          <button class="remove" aria-label="Rimuovi {{ w.ticker }}" title="Rimuovi">
-            <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="currentColor"/><rect x="6" y="10" width="10" height="2" rx="1" fill="#fff"/></svg>
-          </button>
+          <button class="remove" aria-label="Rimuovi {{ w.ticker }}">Rimuovi</button>
         </form>
       </div>
       {% endfor %}
     </div>
 
-    <div class="section-title">Aggiungi titolo</div>
-    <form method="post" action="/watchlist">
-      <div class="group">
-        <div class="field"><label for="f-ticker">Ticker</label><input id="f-ticker" name="ticker" placeholder="NKE" required autocapitalize="characters"></div>
-        <div class="field"><label for="f-name">Nome</label><input id="f-name" name="name" placeholder="Nike" required></div>
-        <div class="field"><label for="f-alias">Alias</label><input id="f-alias" name="aliases" placeholder="Nike Inc., separati da virgola"></div>
-        <div class="field"><label for="f-market">Mercato</label>
-          <select id="f-market" name="market"><option value="US">Stati Uniti</option><option value="EU">Europa</option></select>
-        </div>
+    <form class="add" method="post" action="/watchlist">
+      <h2>Aggiungi un titolo</h2>
+      <div class="fields">
+        <input name="ticker" placeholder="Ticker" aria-label="Ticker" required autocapitalize="characters">
+        <input name="name" placeholder="Nome" aria-label="Nome" required>
+        <input class="wide" name="aliases" placeholder="Altri nomi, separati da virgola" aria-label="Alias">
+        <select class="wide" name="market" aria-label="Mercato"><option value="US">Stati Uniti</option><option value="EU">Europa</option></select>
       </div>
-      <div class="form-actions"><button class="pill pill-primary">Aggiungi</button></div>
+      <button class="link submit">Aggiungi</button>
     </form>
 
+  {% elif news %}
+    <div class="sort">
+      {% for key, label in sorts.items() %}
+      <a href="/?view={{ view }}&sort={{ key }}" class="{{ 'on' if key == sort else '' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <ul class="list">{% for n in news %}{{ news_item(n) }}{% endfor %}</ul>
+
   {% else %}
-    {% if news %}
-      <div class="sortbar">
-        {% for key, label in sorts.items() %}
-        <a href="/?view={{ view }}&sort={{ key }}" class="{{ 'on' if key == sort else '' }}">{{ label }}</a>
-        {% endfor %}
-      </div>
-      <div class="group">
-        {% for n in news %}{{ news_row(n) }}{% endfor %}
-      </div>
-    {% else %}
-      <div class="empty">
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="28" cy="28" r="25"/><circle cx="28" cy="28" r="16"/><circle cx="28" cy="28" r="7"/>
-          <path d="M28 28 L45 11" stroke-linecap="round"/>
-        </svg>
-        {% if view == "alerts" %}
-          <h2>Nessuna segnalazione</h2>
-          <p>Nessuna notizia sui titoli della tua watchlist ha superato la soglia. Il radar continua a controllare.</p>
-        {% elif view == "discover" %}
-          <h2>Nessuna scoperta</h2>
-          <p>Qui compaiono solo eventi forti (8/10 o più) su titoli che non segui ancora.</p>
-        {% else %}
-          <h2>Nessuna notizia</h2>
-          <p>Premi «Controlla ora» per avviare la prima raccolta.</p>
-        {% endif %}
-      </div>
-      {% if near %}
-        <div class="section-title">Le più rilevanti, sotto soglia</div>
-        <div class="group">
-          {% for n in near %}{{ news_row(n) }}{% endfor %}
-        </div>
+    <div class="empty">
+      {% if view == "alerts" %}
+        <h2>Nessuna segnalazione.</h2>
+        <p>Nessuna notizia sui titoli che segui ha superato la soglia. Il radar continua a controllare.</p>
+      {% elif view == "discover" %}
+        <h2>Nessuna scoperta.</h2>
+        <p>Qui compaiono solo eventi forti, da 8 su 10 in su, su titoli che non segui ancora.</p>
+      {% else %}
+        <h2>Nessuna notizia.</h2>
+        <p>Premi «Controlla ora» per la prima raccolta.</p>
       {% endif %}
+    </div>
+    {% if near %}
+      <p class="subhead">Le più rilevanti, sotto soglia</p>
+      <ul class="list">{% for n in near %}{{ news_item(n) }}{% endfor %}</ul>
     {% endif %}
   {% endif %}
+  </main>
 
-  <div class="footer">Il radar segnala, non consiglia: la decisione resta tua.</div>
-</main>
+  <footer>Il radar segnala, non consiglia. La decisione resta tua.</footer>
+</div>
 
 <script>
-  // Il controllo dura qualche secondo: lo stato del pulsante conferma che è partito.
   document.getElementById("fetch-form").addEventListener("submit", () => {
     const btn = document.getElementById("fetch-btn");
     btn.disabled = true;
-    btn.textContent = "Controllo…";
+    btn.textContent = "Controllo in corso…";
   });
 </script>
 </body>
