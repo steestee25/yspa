@@ -23,7 +23,17 @@ jobs:
           YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT || 'YSPA radar 223326988+steestee25@users.noreply.github.com' }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: python -m yspa fetch --report
+      - name: Diagnostica fonti di prezzo
+        run: |
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          for u in "https://query2.finance.yahoo.com/v8/finance/chart/MRNA?range=5d&interval=1d" \
+                   "https://stooq.com/q/d/l/?s=mrna.us&i=d" \
+                   "https://stooq.com/q/d/l/?s=rhm.de&i=d" \
+                   "https://stooq.com/q/l/?s=bsp.us&f=sd2t2ohlcv&h&e=csv"; do
+            echo "=== $u"; curl -sS -A "$UA" -w "\nHTTP %{http_code}\n" "$u" | tail -c 600; echo
+          done
       - name: Prezzi sui casi reali
+        continue-on-error: true
         run: |
           python -m yspa price MRNA --since 2026-08-19T12:00:00+00:00  # prima dell'apertura del 19/08
           python -m yspa price BSP  --since 2026-10-14T11:00:00+00:00  # prima dell'apertura del 14/10
