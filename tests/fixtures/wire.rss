@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Wire</title>
+<item>
+<title>Moderna and Merck Announce Phase 3 INTerpath-001 Trial of Intismeran Autogene Met Its Primary Endpoint</title>
+<link>https://example.com/mrna-interpath</link>
+<guid>wire-1</guid>
+<description><![CDATA[CAMBRIDGE, Mass. -- Moderna, Inc. (NASDAQ: MRNA) and Merck (NYSE: MRK) today announced that the trial met its primary endpoint of recurrence-free survival.]]></description>
+<pubDate>Wed, 19 Aug 2026 10:45:00 GMT</pubDate>
+</item>
+<item>
+<title>Berkshire Hathaway to make additional $330 million investment in Bending Spoons</title>
+<link>https://example.com/bsp-berkshire</link>
+<guid>wire-2</guid>
+<description><![CDATA[MILAN -- Bending Spoons S.p.A. (Nasdaq: BSP) announced a private placement of 10,000,000 ordinary shares to Berkshire Hathaway at $33.00 per share.]]></description>
+<pubDate>Tue, 14 Oct 2026 11:00:00 GMT</pubDate>
+</item>
+<item>
+<title>Small Widget Corp Announces Date of Annual Meeting</title>
+<link>https://example.com/widget</link>
+<guid>wire-3</guid>
+<description><![CDATA[Small Widget Corp (NASDAQ: WIDG) will hold its annual meeting on December 3.]]></description>
+<pubDate>Tue, 14 Oct 2026 12:00:00 GMT</pubDate>
+</item>
+<item>
+<title>Unknown Bio Reports Positive Topline Phase 3 Results</title>
+<link>https://example.com/unkb</link>
+<guid>wire-4</guid>
+<description><![CDATA[Unknown Bio, Inc. (NASDAQ: UNKB) said the study was statistically significant.]]></description>
+<pubDate>Tue, 14 Oct 2026 13:00:00 GMT</pubDate>
+</item>
+</channel></rss>

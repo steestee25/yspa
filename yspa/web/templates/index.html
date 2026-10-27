@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YSPA – radar notizie</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --text:#1d1d1b; --muted:#6b6b66; --line:#e3e3de; --up:#1a7f37; --down:#c62828; --accent:#2f5bd3; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141413; --card:#1f1f1d; --text:#ecece8; --muted:#9a9a93; --line:#33332f; --up:#4cc26a; --down:#ef6b6b; --accent:#7a9cff; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:16px; }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  h1 { font-size:20px; margin:0; }
+  nav a { margin-right:12px; color:var(--muted); text-decoration:none; }
+  nav a.on { color:var(--accent); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; margin:10px 0; }
+  .meta { color:var(--muted); font-size:13px; }
+  .score { font-weight:700; min-width:44px; display:inline-block; }
+  .su { color:var(--up); } .giù { color:var(--down); }
+  .tick { font-weight:600; margin-right:6px; }
+  a { color:var(--accent); }
+  button { font:inherit; padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--text); cursor:pointer; }
+  form.inline { display:inline; }
+  input, select { font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--text); max-width:100%; }
+  .wl { display:flex; flex-wrap:wrap; gap:8px; }
+  .wl span { border:1px solid var(--line); border-radius:6px; padding:2px 6px; background:var(--card); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>YSPA – radar notizie</h1>
+    <form method="post" action="/fetch"><button>Controlla ora</button></form>
+  </header>
+  <nav>
+    {% for key, label in views.items() %}<a href="/?view={{ key }}" class="{{ 'on' if key == view else '' }}">{{ label }}</a>{% endfor %}
+  </nav>
+
+  {% if view == "watchlist" %}
+  <div class="card">
+    <div class="wl">
+      {% for w in watchlist %}
+      <span>{{ w.ticker }} · {{ w.name }}
+        <form class="inline" method="post" action="/watchlist/{{ w.ticker }}/delete"><button title="Rimuovi">×</button></form>
+      </span>
+      {% endfor %}
+    </div>
+    <form method="post" action="/watchlist" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px;">
+      <input name="ticker" placeholder="Ticker (es. NKE)" required>
+      <input name="name" placeholder="Nome (es. Nike)" required>
+      <input name="aliases" placeholder="Alias, separati da virgola">
+      <select name="market"><option>US</option><option>EU</option></select>
+      <button>Aggiungi</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% for n in news %}
+  <div class="card">
+    <div>
+      <span class="score {{ n.direction }}">{{ n.score }}/10</span>
+      {% for t in n.tickers %}<span class="tick">{{ t }}</span>{% endfor %}
+      <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title }}</a>
+    </div>
+    <div class="meta">{{ n.event_type }} · direzione {{ n.direction }} · {{ n.reason }} · {{ n.source }} · {{ n.published_at }}</div>
+    {% if n.is_alert %}
+    <div style="margin-top:6px">
+      {% if n.feedback %}<span class="meta">Risposta: {{ n.feedback }}</span>{% else %}
+      <form class="inline" method="post" action="/news/{{ n.id }}/feedback"><input type="hidden" name="view" value="{{ view }}"><button name="value" value="interessa">Mi interessa</button></form>
+      <form class="inline" method="post" action="/news/{{ n.id }}/feedback"><input type="hidden" name="view" value="{{ view }}"><button name="value" value="ignora">Ignora</button></form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="meta">Nessuna notizia. Premi "Controlla ora".</p>
+  {% endfor %}
+</main>
+</body>
+</html>
