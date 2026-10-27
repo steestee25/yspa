@@ -1,0 +1,25 @@
+name: radar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/wonderful-franklin-ay2r0p]
+    paths: ["yspa/**", ".github/workflows/radar.yml"]
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - name: Un giro di raccolta
+        env:
+          # Impostabile come secret del repository; la SEC chiede nome ed email.
+          YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT || 'YSPA radar github.com/steestee25/yspa' }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: python -m yspa fetch --report
