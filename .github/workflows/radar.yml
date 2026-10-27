@@ -17,13 +17,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
-      - name: Formato grezzo dei feed (diagnostica)
-        run: |
-          for u in "https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies" \
-                   "https://www.prnewswire.com/rss/news-releases-list.rss" \
-                   "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWQ=="; do
-            echo "=== $u"; curl -sSL -A "yspa/0.1" "$u" | head -c 4000; echo
-          done
       - name: Un giro di raccolta
         env:
           # Impostabile come secret del repository; la SEC chiede nome ed email.

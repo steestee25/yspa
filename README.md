@@ -7,7 +7,7 @@ Non compra né vende nulla: ti segnala, decidi tu. Non è consulenza finanziaria
 
 1. **Raccoglie** notizie da fonti gratuite:
    - **SEC EDGAR**: 8-K (aziende USA), 6-K (aziende estere quotate in USA, es. Bending Spoons), SC 13D;
-   - **comunicati stampa** via RSS: GlobeNewswire, PR Newswire, BusinessWire;
+   - **comunicati stampa** via RSS: GlobeNewswire, PR Newswire (se una notizia importante non ha il ticker nel feed, lo cerca nella pagina completa);
    - **Finnhub** (facoltativo, chiave gratuita): notizie per ogni titolo USA in watchlist.
 2. **Riconosce il titolo**: dal tag `(NASDAQ: MRNA)`, dal CIK della SEC o dagli alias della watchlist.
 3. **Classifica** con regole gratuite (`yspa/classify.py`): tipo di evento, direzione attesa, punteggio 1–10.

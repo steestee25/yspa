@@ -13,11 +13,10 @@ FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "")
 # SC 13D (qualcuno supera il 5% con intenzioni attive).
 SEC_FORMS = ["8-K", "6-K", "SC 13D"]
 
-# Feed RSS gratuiti dei comunicati stampa. Modificabili senza toccare il codice sorgente.
+# Feed RSS gratuiti dei comunicati stampa (il feed generale di BusinessWire è stato disattivato). Modificabili senza toccare il codice sorgente.
 RSS_FEEDS = {
     "globenewswire": "https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies",
     "prnewswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
-    "businesswire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWQ==",
 }
 
 # Soglie di punteggio (1-10) per le segnalazioni.

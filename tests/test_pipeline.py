@@ -31,7 +31,7 @@ def test_sec_feed_maps_cik_to_ticker_and_items():
 
 def test_moderna_trial_success_is_top_alert(conn):
     raw = by_title(rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text()), "INTerpath")
-    item = pipeline.enrich(raw, db.get_watchlist(conn))
+    item = pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: "")
     assert item["tickers"][:2] == ["MRNA", "MRK"]
     assert (item["event_type"], item["direction"], item["score"]) == ("studio clinico positivo", "su", 9)
     assert item["in_watchlist"] and item["is_alert"]
@@ -39,7 +39,7 @@ def test_moderna_trial_success_is_top_alert(conn):
 
 def test_bending_spoons_berkshire_is_alert(conn):
     raw = by_title(rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text()), "Berkshire")
-    item = pipeline.enrich(raw, db.get_watchlist(conn))
+    item = pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: "")
     assert item["tickers"] == ["BSP"]
     assert item["event_type"] == "investimento strategico"
     assert item["is_alert"]
@@ -48,8 +48,8 @@ def test_bending_spoons_berkshire_is_alert(conn):
 def test_discovery_needs_strong_event(conn):
     items = rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text())
     watchlist = db.get_watchlist(conn)
-    boring = pipeline.enrich(by_title(items, "Annual Meeting"), watchlist)
-    strong = pipeline.enrich(by_title(items, "Unknown Bio"), watchlist)
+    boring = pipeline.enrich(by_title(items, "Annual Meeting"), watchlist, page_reader=lambda url: "")
+    strong = pipeline.enrich(by_title(items, "Unknown Bio"), watchlist, page_reader=lambda url: "")
     assert not boring["is_alert"]
     assert strong["is_alert"] and not strong["in_watchlist"]
 
@@ -57,8 +57,8 @@ def test_discovery_needs_strong_event(conn):
 def test_store_is_idempotent_and_views(conn):
     watchlist = db.get_watchlist(conn)
     for raw in rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text()):
-        assert db.insert_news(conn, pipeline.enrich(raw, watchlist))
-        assert not db.insert_news(conn, pipeline.enrich(raw, watchlist))
+        assert db.insert_news(conn, pipeline.enrich(raw, watchlist, page_reader=lambda url: ""))
+        assert not db.insert_news(conn, pipeline.enrich(raw, watchlist, page_reader=lambda url: ""))
     assert len(db.list_news(conn, "all")) == 4
     assert {n["tickers"][0] for n in db.list_news(conn, "discover")} == {"UNKB"}
 
@@ -105,3 +105,21 @@ def test_web_pages(tmp_path, monkeypatch):
     client.post("/watchlist/PLTR/delete")
     assert not any(w["ticker"] == "PLTR" for w in db.get_watchlist(web.conn))
     assert client.get("/api/news").json() == []
+
+
+def test_ticker_from_full_page_when_feed_is_truncated(conn):
+    raw = {"uid": "x", "source": "prnewswire", "url": "https://example.com/oncy", "tickers": [], "sec_items": [],
+           "published_at": "2026-10-27T13:30:00+00:00",
+           "title": "Oncolytics Biotech Reports Strong Durability and Survival Data in Anal Cancer",
+           "summary": "CALGARY, Alberta, Oct. 27, 2026 -- Oncolytics Biotech, a leading company..."}
+    page = "SAN DIEGO and CALGARY, Oct. 27, 2026 (GLOBE NEWSWIRE) -- Oncolytics Biotech® Inc. (NASDAQ: ONCY) today..."
+    seen = []
+    item = pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: seen.append(url) or page)
+    assert seen == ["https://example.com/oncy"]
+    assert item["tickers"] == ["ONCY"] and item["is_alert"] == 0  # 7/10 fuori watchlist: sotto soglia scoperta
+
+
+def test_unimportant_news_does_not_download_page(conn):
+    raw = {"uid": "y", "source": "prnewswire", "url": "https://example.com/x", "tickers": [], "sec_items": [],
+           "published_at": "2026-10-27T13:30:00+00:00", "title": "Company wins design award", "summary": ""}
+    pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: pytest.fail("non doveva scaricare"))

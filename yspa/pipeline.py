@@ -4,17 +4,40 @@ import logging
 from . import config, db
 from .classify import classify
 from .sources import finnhub, rss, sec_edgar
+from .sources.common import http_get, strip_html
 from .tickers import find_tickers
 
 log = logging.getLogger(__name__)
 
+# Il ticker sta nel primo paragrafo del comunicato, subito dopo la riga con città e data.
+DATELINE_MARKERS = ("/PRNewswire/", "(GLOBE NEWSWIRE)", "/CNW/", "(BUSINESS WIRE)")
+DATELINE_WINDOW = 3000
 
-def enrich(raw: dict, watchlist: list[dict]) -> dict:
+
+def tickers_from_page(url: str) -> str:
+    """Testo del primo paragrafo del comunicato completo, o '' se non lo si trova."""
+    try:
+        text = strip_html(http_get(url).text)
+    except Exception as exc:
+        log.warning("Pagina %s non leggibile: %s", url, exc)
+        return ""
+    for marker in DATELINE_MARKERS:
+        start = text.find(marker)
+        if start != -1:
+            return text[start:start + DATELINE_WINDOW]
+    return ""
+
+
+def enrich(raw: dict, watchlist: list[dict], page_reader=tickers_from_page) -> dict:
     text = f"{raw['title']}. {raw['summary']}"
     found, _ = find_tickers(text, watchlist)
     tickers = list(dict.fromkeys(raw["tickers"] + found))
-    in_watchlist = bool(set(tickers) & {w["ticker"] for w in watchlist})
     result = classify(text, raw.get("sec_items"))
+    # I feed RSS contengono solo l'inizio del comunicato: se la notizia è importante ma il ticker
+    # manca, lo cerchiamo nella pagina completa. Solo per queste, per non scaricare tutto.
+    if not tickers and result.score >= config.ALERT_SCORE_WATCHLIST and raw["url"]:
+        tickers, _ = find_tickers(page_reader(raw["url"]), watchlist)
+    in_watchlist = bool(set(tickers) & {w["ticker"] for w in watchlist})
     threshold = config.ALERT_SCORE_WATCHLIST if in_watchlist else config.ALERT_SCORE_DISCOVERY
     return {
         **{k: raw[k] for k in ("uid", "source", "title", "summary", "url", "published_at")},
