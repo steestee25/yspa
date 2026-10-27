@@ -29,6 +29,20 @@ uvicorn yspa.web.app:app --reload      # interfaccia web su http://127.0.0.1:800
 
 Test: `python -m pytest`
 
+## Avvio su GitHub Codespaces
+
+1. Su GitHub, nel repository, scegli il branch `claude/wonderful-franklin-ay2r0p`.
+2. **Code → Codespaces → Create codespace on claude/wonderful-franklin-ay2r0p**.
+3. Al primo avvio GitHub chiede i secret consigliati: `YSPA_SEC_USER_AGENT` (nome ed email) e,
+   facoltativa, `FINNHUB_API_KEY`.
+4. Le dipendenze si installano e `scripts/start.sh` avvia raccolta e pagina web da solo.
+   La pagina si apre sulla porta 8000 (scheda **Ports**).
+
+Comandi utili: `tail -f data/radar.log` (cosa sta facendo), `bash scripts/stop.sh` (ferma tutto).
+
+Attenzione: un Codespace si spegne dopo 30 minuti senza attività e gira in un data center, che
+Yahoo e la SEC possono bloccare.
+
 ## Limiti noti
 
 - L'Europa è coperta solo dai comunicati che passano per i wire RSS e dagli alias. Le fonti

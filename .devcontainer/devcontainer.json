@@ -1,0 +1,18 @@
+{
+  "name": "YSPA radar",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -r requirements.txt",
+  "postAttachCommand": "bash scripts/start.sh",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "Radar", "onAutoForward": "openBrowser" }
+  },
+  "secrets": {
+    "YSPA_SEC_USER_AGENT": {
+      "description": "Nome ed email per la SEC, es. 'Mario Rossi mario@esempio.com'. Senza, la SEC rifiuta le richieste."
+    },
+    "FINNHUB_API_KEY": {
+      "description": "Facoltativa: chiave gratuita da finnhub.io per le notizie per titolo."
+    }
+  }
+}
