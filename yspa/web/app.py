@@ -10,19 +10,26 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import config, db, pipeline
+from . import labels
 from .timefmt import calm_title, human_time, number, percent
 
 app = FastAPI(title="YSPA")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.filters["when"] = human_time
-templates.env.filters["calm"] = calm_title
-templates.env.filters["num"] = number
-templates.env.filters["pct"] = percent
+templates.env.filters.update({
+    "when": human_time,
+    "calm": calm_title,
+    "num": number,
+    "pct": percent,
+    "importance": labels.importance,
+    "effect": labels.effect,
+    "event": labels.event,
+    "source": labels.source,
+    "reason": labels.reason,
+})
 conn = db.connect()
 db.seed_watchlist(conn)
 
-VIEWS = {"alerts": "Segnalazioni", "discover": "Scoperte", "all": "Tutte", "watchlist": "Watchlist"}
-SORT_LABELS = {"importanza": "Importanza", "recenti": "Più recenti"}
+SORT_LABELS = {"importanza": "Prima le più importanti", "recenti": "Prima le più recenti"}
 
 
 def back_to(view: str, sort: str) -> RedirectResponse:
@@ -30,17 +37,22 @@ def back_to(view: str, sort: str) -> RedirectResponse:
 
 
 @app.get("/")
-def index(request: Request, view: str = "alerts", sort: str = "importanza"):
-    view = view if view in VIEWS else "alerts"
+def index(request: Request, view: str = "alerts", sort: str = "importanza", tutte: int = 0):
+    view = view if view in labels.VIEWS else "alerts"
     sort = sort if sort in SORT_LABELS else "importanza"
-    news = [] if view == "watchlist" else db.list_news(conn, view, sort=sort)
+    # Nella vista "Tutte" le notizie poco importanti restano nascoste finché non le chiedi.
+    min_score = config.LOW_SCORE if view == "all" and not tutte else 0
+    news = [] if view == "watchlist" else db.list_news(conn, view, sort=sort, min_score=min_score)
+    watchlist = db.get_watchlist(conn)
     return templates.TemplateResponse(request, "index.html", {
         "news": news,
+        "hidden": db.count_below(conn, view, min_score) if min_score else 0,
         "near": db.near_alerts(conn) if view == "alerts" and not news else [],
-        "watchlist": db.get_watchlist(conn),
+        "watchlist": watchlist,
+        "names": {w["ticker"]: w["name"] for w in watchlist},
         "last_fetch": db.last_fetch(conn),
         "view": view,
-        "views": VIEWS,
+        "views": labels.VIEWS,
         "sort": sort,
         "sorts": SORT_LABELS,
         "feedback_min_score": config.ALERT_SCORE_WATCHLIST,

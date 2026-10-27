@@ -69,6 +69,8 @@ SEC_ITEMS = {
     "5.02": ("cambio management", "incerta", 4),
     "7.01": ("comunicazione al mercato", "incerta", 3),
     "8.01": ("altri eventi", "incerta", 3),
+    # Non è una voce ma un modulo: un investitore supera il 5% con intenzione di influire sulla società.
+    "SC 13D": ("investitore attivo sopra il 5%", "su", 7),
 }
 
 _COMPILED = [(rule, [re.compile(p, re.IGNORECASE) for p in rule.patterns]) for rule in RULES]
@@ -101,7 +103,7 @@ def classify_sec_items(items: list[str]) -> Classification:
         if item in SEC_ITEMS:
             event_type, direction, score = SEC_ITEMS[item]
             if score > best.score:
-                best = Classification(event_type, direction, score, f"8-K voce {item}")
+                best = Classification(event_type, direction, score, f"SEC {item}" if " " in item else f"8-K voce {item}")
     return best
 
 

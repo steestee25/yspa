@@ -150,3 +150,34 @@ def test_calm_title():
     from yspa.web.timefmt import calm_title
     assert calm_title("FINAL RESULTS OF THE OFFER: 89.42%") == "Final results of the offer: 89.42%"
     assert calm_title("NASDAQ Grants Rekor Systems Extension") == "NASDAQ Grants Rekor Systems Extension"
+
+
+def sec_raw(form, items, company="Acme Corp", tickers=("ACME",)):
+    return {"uid": f"sec:{form}{items}", "source": f"SEC {form}", "url": "", "tickers": list(tickers),
+            "published_at": "2026-10-27T14:00:00+00:00",
+            "title": sec_edgar.readable_title(form, company, items),
+            "summary": "Item 1.01: Entry into a Material Definitive Agreement Item 9.01: Financial Statements",
+            "sec_items": items}
+
+
+def test_sec_material_agreement_is_not_a_takeover(conn):
+    item = pipeline.enrich(sec_raw("8-K", ["1.01", "9.01"]), db.get_watchlist(conn), page_reader=lambda u: "")
+    assert item["event_type"] == "accordo rilevante" and item["score"] == 6
+    assert item["title"] == "Acme Corp ha firmato un accordo importante"
+
+
+def test_sec_noise_is_dropped_unless_watchlist_or_strong(conn):
+    wl = db.get_watchlist(conn)
+    other = pipeline.enrich(sec_raw("8-K", ["8.01"]), wl, page_reader=lambda u: "")
+    mine = pipeline.enrich(sec_raw("8-K", ["8.01"], "Moderna, Inc.", ["MRNA"]), wl, page_reader=lambda u: "")
+    activist = pipeline.enrich(sec_raw("SC 13D", ["SC 13D"]), wl, page_reader=lambda u: "")
+    assert not pipeline.worth_keeping(other)
+    assert pipeline.worth_keeping(mine)
+    assert pipeline.worth_keeping(activist) and activist["title"] == "Acme Corp: un investitore ha superato il 5% delle azioni"
+
+
+def test_purge_removes_old_sec_noise(conn):
+    wl = db.get_watchlist(conn)
+    db.insert_news(conn, pipeline.enrich(sec_raw("8-K", ["8.01"]), wl, page_reader=lambda u: ""))
+    db.purge_sec_noise(conn, 6)
+    assert db.list_news(conn, "all") == []

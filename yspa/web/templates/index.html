@@ -58,7 +58,7 @@
   }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
 
-  nav { display: flex; gap: 24px; margin-top: 40px; font-size: 15px; overflow-x: auto; scrollbar-width: none; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 40px; font-size: 15px; }
   nav a { color: var(--muted); white-space: nowrap; }
   nav a.on { color: var(--text); font-weight: 500; }
 
@@ -67,27 +67,32 @@
 
   /* Elenco: solo tipografia e linee sottili */
   .list { margin: 12px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-  .item { display: grid; grid-template-columns: 44px 1fr; gap: 0 16px; padding: 22px 0; border-bottom: 1px solid var(--line); }
-  .score { font-size: 28px; line-height: 1; font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--faint); }
-  .score.strong { color: var(--text); }
-  .arrow { display: block; margin-top: 6px; font-size: 13px; font-weight: 500; }
-  .arrow.su { color: var(--up); }
-  .arrow.giù { color: var(--down); }
+  .item { padding: 24px 0; border-bottom: 1px solid var(--line); }
+  .item.low .title { color: var(--muted); }
 
   .kicker { font-size: 13px; color: var(--muted); }
-  .kicker b { color: var(--text); font-weight: 600; margin-right: 6px; letter-spacing: 0; }
+  .kicker b { color: var(--text); font-weight: 600; letter-spacing: 0; }
   .title { display: block; margin-top: 4px; font-size: 17px; line-height: 1.4; }
-  .meta { margin-top: 6px; font-size: 13px; color: var(--muted); }
-  .why { color: var(--faint); }
-  .price { margin-top: 10px; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .price .pct { font-weight: 600; }
+  .effect { margin-top: 8px; font-size: 15px; }
+  .effect .su { color: var(--up); }
+  .effect .giù { color: var(--down); }
+  .effect .incerta, .effect .neutra { color: var(--muted); }
+  .effect .imp { color: var(--muted); }
+  .price { margin-top: 4px; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .price .pct { font-weight: 600; color: var(--text); }
   .price .pct.up { color: var(--up); }
   .price .pct.down { color: var(--down); }
-  .price .rest { color: var(--muted); }
-  .actions { display: flex; gap: 20px; margin-top: 12px; }
+  .meta { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  details { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  summary { cursor: pointer; width: fit-content; list-style: none; color: var(--accent); }
+  summary::-webkit-details-marker { display: none; }
+  details p { margin: 4px 0 0; }
+  .actions { display: flex; gap: 20px; margin-top: 14px; }
   .actions form { margin: 0; }
   .actions .ignore { color: var(--muted); font-size: 15px; }
-  .answer { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .answer { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .more { display: block; margin-top: 24px; text-align: center; font-size: 15px; color: var(--accent); }
+  .intro { margin-top: 14px; font-size: 15px; color: var(--muted); }
 
   .empty { padding: 72px 0 8px; text-align: center; }
   .empty h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
@@ -120,7 +125,7 @@
   @media (max-width: 480px) {
     header { padding-top: max(32px, env(safe-area-inset-top)); }
     h1 { font-size: 28px; }
-    nav { margin-top: 28px; gap: 20px; }
+    nav { margin-top: 28px; gap: 8px 18px; }
     .fields { grid-template-columns: 1fr; }
   }
 </style>
@@ -128,39 +133,42 @@
 <body>
 
 {% macro news_item(n) %}
-<li class="item">
-  <div class="score {{ 'strong' if n.score >= feedback_min_score else '' }}" title="Importanza {{ n.score }} su 10">
-    {{ n.score }}
-    {% if n.direction == "su" %}<span class="arrow su" aria-label="attesa al rialzo">↑</span>
-    {% elif n.direction == "giù" %}<span class="arrow giù" aria-label="attesa al ribasso">↓</span>{% endif %}
+<li class="item {{ 'low' if n.score < 3 else '' }}">
+  <div class="kicker">
+    {% for t in n.tickers %}<b>{{ t }}</b>{% if names.get(t) %} {{ names[t] }}{% endif %} · {% endfor %}{{ n.event_type | event }}
   </div>
-  <div>
-    <div class="kicker">{% for t in n.tickers %}<b>{{ t }}</b>{% endfor %}{{ n.event_type }}</div>
-    <a class="title" href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title | calm }}</a>
-    <div class="meta">{{ n.published_at | when }} · {{ n.source }}{% if n.reason %} · <span class="why">{{ n.reason }}</span>{% endif %}</div>
-    {% if n.change_pct is not none %}
-    <div class="price" title="Prezzo prima della notizia → prezzo delle {{ n.price_time | when }}">
-      <span class="pct {{ 'up' if n.change_pct > 0 else 'down' if n.change_pct < 0 else '' }}">{{ n.change_pct | pct }}</span>
-      <span class="rest">dalla notizia · {{ n.price_before | num }} → {{ n.price_now | num }} {{ n.currency }}</span>
+  <a class="title" href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title | calm }}</a>
+  <div class="effect">
+    <span class="{{ n.direction }}">{% if n.direction == "su" %}↑ {% elif n.direction == "giù" %}↓ {% endif %}{{ n.direction | effect }}</span>
+    <span class="imp"> · {{ n.score | importance }}</span>
+  </div>
+  {% if n.change_pct is not none %}
+  <div class="price">
+    Da quando è uscita la notizia:
+    <span class="pct {{ 'up' if n.change_pct > 0 else 'down' if n.change_pct < 0 else '' }}">{{ n.change_pct | pct }}</span>
+    ({{ n.price_before | num }} → {{ n.price_now | num }} {{ n.currency }})
+  </div>
+  {% endif %}
+  <div class="meta">{{ n.published_at | when }} · {{ n.source | source }}</div>
+  {% if n.reason %}
+  <details><summary>Perché?</summary><p>{{ n.reason | reason }}</p></details>
+  {% endif %}
+  {% if n.score >= feedback_min_score and n.tickers %}
+    {% if n.feedback == "interessa" %}<div class="answer">Hai detto che ti interessa.</div>
+    {% elif n.feedback == "ignora" %}<div class="answer">Hai deciso di ignorarla.</div>
+    {% else %}
+    <div class="actions">
+      <form method="post" action="/news/{{ n.id }}/feedback">
+        <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
+        <button class="link" name="value" value="interessa">Mi interessa</button>
+      </form>
+      <form method="post" action="/news/{{ n.id }}/feedback">
+        <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
+        <button class="ignore" name="value" value="ignora">Ignora</button>
+      </form>
     </div>
     {% endif %}
-    {% if n.score >= feedback_min_score and n.tickers %}
-      {% if n.feedback == "interessa" %}<div class="answer">Ti interessa</div>
-      {% elif n.feedback == "ignora" %}<div class="answer">Ignorata</div>
-      {% else %}
-      <div class="actions">
-        <form method="post" action="/news/{{ n.id }}/feedback">
-          <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
-          <button class="link" name="value" value="interessa">Mi interessa</button>
-        </form>
-        <form method="post" action="/news/{{ n.id }}/feedback">
-          <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
-          <button class="ignore" name="value" value="ignora">Ignora</button>
-        </form>
-      </div>
-      {% endif %}
-    {% endif %}
-  </div>
+  {% endif %}
 </li>
 {% endmacro %}
 
@@ -173,12 +181,16 @@
         <button class="link" id="fetch-btn">Controlla ora</button>
       </form>
     </div>
-    <div class="status">{% if last_fetch %}Ultimo controllo {{ last_fetch | when }}{% else %}Nessun controllo ancora{% endif %}</div>
+    <div class="status">
+      Legge i comunicati delle aziende ogni minuto.
+      {% if last_fetch %}Ultimo controllo {{ last_fetch | when }}.{% else %}Nessun controllo ancora.{% endif %}
+    </div>
     <nav aria-label="Viste">
-      {% for key, label in views.items() %}
+      {% for key, (label, _) in views.items() %}
       <a href="/?view={{ key }}&sort={{ sort }}" class="{{ 'on' if key == view else '' }}" {% if key == view %}aria-current="page"{% endif %}>{{ label }}</a>
       {% endfor %}
     </nav>
+    <p class="intro">{{ views[view][1] }}</p>
   </header>
 
   <main>
@@ -188,21 +200,21 @@
       <div class="wl">
         <b>{{ w.ticker }}</b>
         <span class="name">{{ w.name }}</span>
-        <span class="market">{{ w.market }}</span>
+        <span class="market">{{ "USA" if w.market == "US" else "Europa" }}</span>
         <form method="post" action="/watchlist/{{ w.ticker }}/delete">
-          <button class="remove" aria-label="Rimuovi {{ w.ticker }}">Rimuovi</button>
+          <button class="remove" aria-label="Smetti di seguire {{ w.ticker }}">Rimuovi</button>
         </form>
       </div>
       {% endfor %}
     </div>
 
     <form class="add" method="post" action="/watchlist">
-      <h2>Aggiungi un titolo</h2>
+      <h2>Segui un'altra azienda</h2>
       <div class="fields">
-        <input name="ticker" placeholder="Ticker" aria-label="Ticker" required autocapitalize="characters">
-        <input name="name" placeholder="Nome" aria-label="Nome" required>
-        <input class="wide" name="aliases" placeholder="Altri nomi, separati da virgola" aria-label="Alias">
-        <select class="wide" name="market" aria-label="Mercato"><option value="US">Stati Uniti</option><option value="EU">Europa</option></select>
+        <input name="ticker" placeholder="Sigla in borsa, es. NKE" aria-label="Sigla in borsa" required autocapitalize="characters">
+        <input name="name" placeholder="Nome, es. Nike" aria-label="Nome" required>
+        <input class="wide" name="aliases" placeholder="Altri nomi con cui compare nelle notizie (facoltativo)" aria-label="Altri nomi">
+        <select class="wide" name="market" aria-label="Mercato"><option value="US">Borsa USA</option><option value="EU">Borsa europea</option></select>
       </div>
       <button class="link submit">Aggiungi</button>
     </form>
@@ -214,28 +226,30 @@
       {% endfor %}
     </div>
     <ul class="list">{% for n in news %}{{ news_item(n) }}{% endfor %}</ul>
+    {% if hidden %}<a class="more" href="/?view={{ view }}&sort={{ sort }}&tutte=1">Mostra anche {{ hidden }} notizie poco importanti</a>{% endif %}
 
   {% else %}
     <div class="empty">
       {% if view == "alerts" %}
-        <h2>Nessuna segnalazione.</h2>
-        <p>Nessuna notizia sui titoli che segui ha superato la soglia. Il radar continua a controllare.</p>
+        <h2>Per ora niente da guardare.</h2>
+        <p>Nessuna notizia sui tuoi titoli può muovere il prezzo. Il radar continua a controllare.</p>
       {% elif view == "discover" %}
-        <h2>Nessuna scoperta.</h2>
-        <p>Qui compaiono solo eventi forti, da 8 su 10 in su, su titoli che non segui ancora.</p>
+        <h2>Nessun titolo nuovo.</h2>
+        <p>Qui compaiono solo notizie molto forti, da 8 su 10 in su, su aziende che non segui.</p>
       {% else %}
-        <h2>Nessuna notizia.</h2>
-        <p>Premi «Controlla ora» per la prima raccolta.</p>
+        <h2>Ancora nessuna notizia.</h2>
+        <p>Premi «Controlla ora» per la prima lettura.</p>
       {% endif %}
     </div>
     {% if near %}
-      <p class="subhead">Le più rilevanti, sotto soglia</p>
+      <p class="subhead">Le notizie più vicine a meritare la tua attenzione</p>
       <ul class="list">{% for n in near %}{{ news_item(n) }}{% endfor %}</ul>
     {% endif %}
+    {% if hidden %}<a class="more" href="/?view={{ view }}&sort={{ sort }}&tutte=1">Mostra {{ hidden }} notizie poco importanti</a>{% endif %}
   {% endif %}
   </main>
 
-  <footer>Il radar segnala, non consiglia. La decisione resta tua.<br>Prezzi da Yahoo Finance, anche con 15 minuti di ritardo.</footer>
+  <footer>Il radar segnala, non consiglia: la decisione resta tua.<br>Prezzi da Yahoo Finance, anche con 15 minuti di ritardo.</footer>
 </div>
 
 <script>

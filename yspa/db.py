@@ -110,15 +110,35 @@ SORTS = {
 }
 
 
-def list_news(conn, view: str = "all", limit: int = 200, sort: str = "importanza") -> list[dict]:
-    where = {
-        "alerts": "WHERE is_alert = 1",
-        "watchlist": "WHERE in_watchlist = 1",
-        "discover": "WHERE is_alert = 1 AND in_watchlist = 0",
-    }.get(view, "")
+VIEW_FILTERS = {
+    "alerts": "is_alert = 1",
+    "watchlist": "in_watchlist = 1",
+    "discover": "is_alert = 1 AND in_watchlist = 0",
+    "all": "1 = 1",
+}
+
+
+def list_news(conn, view: str = "all", limit: int = 200, sort: str = "importanza", min_score: int = 0) -> list[dict]:
+    where = VIEW_FILTERS.get(view, VIEW_FILTERS["all"])
     order = SORTS.get(sort, SORTS["importanza"])
-    rows = conn.execute(f"SELECT * FROM news {where} ORDER BY {order} LIMIT ?", (limit,)).fetchall()
+    rows = conn.execute(
+        f"SELECT * FROM news WHERE {where} AND score >= ? ORDER BY {order} LIMIT ?", (min_score, limit)
+    ).fetchall()
     return [{**dict(r), "tickers": json.loads(r["tickers"])} for r in rows]
+
+
+def count_below(conn, view: str, min_score: int) -> int:
+    where = VIEW_FILTERS.get(view, VIEW_FILTERS["all"])
+    return conn.execute(f"SELECT COUNT(*) FROM news WHERE {where} AND score < ?", (min_score,)).fetchone()[0]
+
+
+def purge_sec_noise(conn, min_score: int) -> None:
+    """Toglie i depositi SEC poco importanti di titoli non seguiti (anche quelli salvati prima del filtro)."""
+    conn.execute(
+        "DELETE FROM news WHERE source LIKE 'SEC%' AND in_watchlist = 0 AND is_alert = 0 AND score < ? AND feedback IS NULL",
+        (min_score,),
+    )
+    conn.commit()
 
 
 def near_alerts(conn, limit: int = 5) -> list[dict]:

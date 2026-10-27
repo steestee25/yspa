@@ -15,6 +15,9 @@ TIMEZONE = os.environ.get("YSPA_TIMEZONE", "Europe/Rome")
 # Moduli EDGAR da seguire: 8-K (aziende USA), 6-K (aziende estere quotate in USA, es. BSP),
 # SC 13D (qualcuno supera il 5% con intenzioni attive).
 SEC_FORMS = ["8-K", "6-K", "SC 13D"]
+# La SEC pubblica centinaia di depositi al giorno: si tengono solo quelli dei titoli seguiti
+# o con un evento almeno di questo voto, altrimenti coprono i comunicati stampa.
+SEC_MIN_SCORE = 6
 
 # Feed RSS gratuiti dei comunicati stampa (il feed generale di BusinessWire è stato disattivato). Modificabili senza toccare il codice sorgente.
 RSS_FEEDS = {
@@ -25,6 +28,9 @@ RSS_FEEDS = {
 # Soglie di punteggio (1-10) per le segnalazioni.
 ALERT_SCORE_WATCHLIST = 5   # titolo in watchlist
 ALERT_SCORE_DISCOVERY = 8   # titolo fuori watchlist: solo eventi forti
+
+# Nella vista "Tutte", le notizie sotto questo voto restano nascoste finché non le chiedi.
+LOW_SCORE = 3
 
 # Prezzi: per quali notizie aggiornarli a ogni giro.
 PRICE_MIN_SCORE = 5

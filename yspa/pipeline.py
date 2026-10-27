@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 from . import config, db, prices
-from .classify import classify
+from .classify import classify, classify_sec_items
 from .sources import finnhub, rss, sec_edgar
 from .sources.common import http_get, strip_html
 from .tickers import find_tickers
@@ -33,7 +33,12 @@ def enrich(raw: dict, watchlist: list[dict], page_reader=tickers_from_page) -> d
     text = f"{raw['title']}. {raw['summary']}"
     found, _ = find_tickers(text, watchlist)
     tickers = list(dict.fromkeys(raw["tickers"] + found))
-    result = classify(text, raw.get("sec_items"))
+    # Per i depositi SEC il riassunto è solo l'elenco delle voci in inglese ("Entry into a Material
+    # Definitive Agreement"): leggerlo come testo darebbe falsi positivi. Conta il codice della voce.
+    if raw["source"].startswith("SEC"):
+        result = classify_sec_items(raw.get("sec_items") or [])
+    else:
+        result = classify(text, raw.get("sec_items"))
     # I feed RSS contengono solo l'inizio del comunicato: se la notizia è importante ma il ticker
     # manca, lo cerchiamo nella pagina completa. Solo per queste, per non scaricare tutto.
     if not tickers and result.score >= config.ALERT_SCORE_WATCHLIST and raw["url"]:
@@ -68,6 +73,12 @@ def collect(watchlist: list[dict]) -> list[dict]:
     return raw_items
 
 
+def worth_keeping(item: dict) -> bool:
+    if not item["source"].startswith("SEC"):
+        return True
+    return bool(item["in_watchlist"]) or item["score"] >= config.SEC_MIN_SCORE
+
+
 def update_prices(conn, fetch_chart=prices.fetch_chart) -> int:
     """Aggiorna prezzo prima della notizia e prezzo attuale. Un solo grafico per ticker a giro."""
     news = db.news_needing_prices(conn, config.PRICE_MIN_SCORE, config.PRICE_MAX_AGE_DAYS)
@@ -96,7 +107,10 @@ def run_once(conn) -> list[dict]:
     new_alerts = []
     for raw in collect(watchlist):
         item = enrich(raw, watchlist)
+        if not worth_keeping(item):
+            continue
         if db.insert_news(conn, item) and item["is_alert"]:
             new_alerts.append(item)
+    db.purge_sec_noise(conn, config.SEC_MIN_SCORE)
     update_prices(conn)
     return new_alerts
