@@ -41,7 +41,8 @@ def enrich(raw: dict, watchlist: list[dict], page_reader=tickers_from_page) -> d
         result = classify(text, raw.get("sec_items"))
     # I feed RSS contengono solo l'inizio del comunicato: se la notizia è importante ma il ticker
     # manca, lo cerchiamo nella pagina completa. Solo per queste, per non scaricare tutto.
-    if not tickers and result.score >= config.ALERT_SCORE_WATCHLIST and raw["url"]:
+    # Non per i depositi SEC: la loro pagina è un indice di documenti, senza "(NASDAQ: X)".
+    if not tickers and result.score >= config.ALERT_SCORE_WATCHLIST and raw["url"] and not raw["source"].startswith("SEC"):
         tickers, _ = find_tickers(page_reader(raw["url"]), watchlist, title=raw["title"])
     in_watchlist = bool(set(tickers) & {w["ticker"] for w in watchlist})
     threshold = config.ALERT_SCORE_WATCHLIST if in_watchlist else config.ALERT_SCORE_DISCOVERY

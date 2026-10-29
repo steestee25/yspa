@@ -231,3 +231,10 @@ def test_source_errors_in_plain_words():
     from yspa.web.labels import source_error
     assert "nome ed email" in source_error("RuntimeError: Imposta YSPA_SEC_USER_AGENT (es. ...)")
     assert "403" in source_error("HTTPStatusError: Client error '403 Forbidden' for url 'https://www.sec.gov/'")
+
+
+def test_sec_filing_without_ticker_does_not_download_page(conn):
+    raw = sec_raw("8-K", ["1.01"], tickers=())
+    raw["url"] = "https://www.sec.gov/Archives/edgar/data/1/x-index.htm"
+    item = pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: pytest.fail("non doveva scaricare"))
+    assert item["tickers"] == [] and item["score"] == 6
