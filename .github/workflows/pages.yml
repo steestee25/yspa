@@ -55,6 +55,21 @@ jobs:
         run: python -m yspa fetch
       - name: Pagine
         run: python -m yspa site --out _site
+      - name: Riepilogo dei dati pubblicati
+        run: |
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("_site/data.json"))
+          t = json.load(open("_site/tickers.json"))
+          print(f"Aggiornato: {d['last_fetch']} · notizie: {len(d['news'])} · elenco ricerca: {len(t)} titoli\n")
+          for w in d["watchlist"]:
+              q = w["quote"] or {}
+              print(f"- {w['ticker']}: {q.get('price', 'n.d.')} {q.get('currency', '')} ({q.get('change_pct')}% oggi, {q.get('source', '-')}), "
+                    f"punti grafico {len(w['spark'])}, notizie {len(w['news'])}")
+          print()
+          for s in d["sources"]:
+              print(f"- {'ok' if s['ok'] else 'ERRORE'} {s['name']} ({s['items']}) {s['message']}")
+          PY
       - name: Salva il database per il giro successivo
         if: always()
         uses: actions/cache/save@v4
