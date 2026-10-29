@@ -1,6 +1,8 @@
 name: pages
 
 # Il radar su GitHub, gratis: ogni 5 minuti un giro di raccolta, poi la pagina pubblicata su GitHub Pages.
+# Ogni giro avvia il successivo (workflow_dispatch): il programma "schedule" di GitHub può tardare ore
+# o non partire, e resta solo come riserva. Per fermare il radar: Actions -> pages -> Disable workflow.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -10,11 +12,13 @@ on:
     paths: ["yspa/**", "watchlist.csv", ".github/workflows/pages.yml"]
 
 permissions:
+  actions: write   # per avviare il giro successivo
   contents: read
   pages: write
   id-token: write
 
-# Un giro alla volta: il database passa dall'uno al successivo.
+# Un giro alla volta: il database passa dall'uno al successivo. GitHub tiene al massimo un giro in corso
+# e uno in attesa, quindi più catene di giri si fondono in una.
 concurrency:
   group: radar-pages
   cancel-in-progress: false
@@ -32,6 +36,8 @@ jobs:
       YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
     steps:
+      - name: Ora di inizio
+        run: echo "RADAR_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -60,3 +66,11 @@ jobs:
           path: _site
       - id: deploy
         uses: actions/deploy-pages@v4
+      - name: Prossimo giro tra circa 5 minuti
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          wait=$(( 270 - ($(date +%s) - RADAR_START) ))
+          if [ "$wait" -gt 0 ]; then sleep "$wait"; fi
+          gh workflow run pages.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}"

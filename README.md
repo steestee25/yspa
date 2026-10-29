@@ -25,8 +25,9 @@ Non compra né vende nulla: segnala, decidi tu. Non è consulenza finanziaria.
 
 ## Su GitHub, gratis e senza carta (consigliato per iniziare)
 
-Il workflow `.github/workflows/pages.yml` esegue un giro di raccolta ogni 5 minuti e pubblica la
+Il workflow `.github/workflows/pages.yml` esegue un giro di raccolta ogni 5 minuti circa e pubblica la
 pagina su **https://steestee25.github.io/yspa/**. Per un repository pubblico non costa nulla.
+Ogni giro avvia il successivo; per fermare il radar: scheda *Actions* → *pages* → *Disable workflow*.
 
 Da fare una volta sola:
 1. GitHub → repository → **Settings → Pages** → *Build and deployment* → *Source*: **GitHub Actions**.
