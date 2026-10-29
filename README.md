@@ -23,6 +23,22 @@ Non compra né vende nulla: segnala, decidi tu. Non è consulenza finanziaria.
 6. **Pagina web**: da guardare, titoli nuovi, tutte le notizie, watchlist modificabile, risposte
    "Mi interessa / Ignora", stato di ogni fonte. `/health` restituisce lo stato in JSON.
 
+## Su GitHub, gratis e senza carta (consigliato per iniziare)
+
+Il workflow `.github/workflows/pages.yml` esegue un giro di raccolta ogni 5 minuti e pubblica la
+pagina su **https://steestee25.github.io/yspa/**. Per un repository pubblico non costa nulla.
+
+Da fare una volta sola:
+1. GitHub → repository → **Settings → Pages** → *Build and deployment* → *Source*: **GitHub Actions**.
+2. (Consigliato) **Settings → Secrets and variables → Actions → New repository secret**:
+   nome `YSPA_SEC_USER_AGENT`, valore `Nome Cognome tua@email.com`.
+
+Differenze rispetto a un server: la pagina è pubblica e si legge soltanto; la watchlist si cambia
+modificando `watchlist.csv`; GitHub esegue i giri ogni 5 minuti, a volte in ritardo; da GitHub
+rispondono PR Newswire e i prezzi Nasdaq/CNBC, mentre GlobeNewswire e (senza email) la SEC no.
+GitHub sospende i workflow programmati dopo 60 giorni senza attività sul repository: basta
+riattivarli dalla scheda *Actions*.
+
 ## Server cloud gratuito (Oracle Cloud "Always Free")
 
 Una macchina sempre accesa, gratis. Oracle chiede una carta solo per verificare l'identità:

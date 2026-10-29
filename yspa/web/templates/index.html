@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Radar</title>
+{% if static %}<meta http-equiv="refresh" content="300">{% endif %}
 <style>
   :root {
     --bg: #ffffff;
@@ -162,7 +163,7 @@
   {% if n.reason %}
   <details><summary>Perché?</summary><p>{{ n.reason | reason }}</p></details>
   {% endif %}
-  {% if n.score >= feedback_min_score and n.tickers %}
+  {% if n.score >= feedback_min_score and n.tickers and not static %}
     {% if n.feedback == "interessa" %}<div class="answer">Hai detto che ti interessa.</div>
     {% elif n.feedback == "ignora" %}<div class="answer">Hai deciso di ignorarla.</div>
     {% else %}
@@ -185,18 +186,22 @@
   <header>
     <div class="top">
       <h1>Radar</h1>
+      {% if static %}
+      <a class="link" href="{{ run_url }}" target="_blank" rel="noopener">Controlla ora</a>
+      {% else %}
       <form method="post" action="/fetch" id="fetch-form">
         <input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="sort" value="{{ sort }}">
         <button class="link" id="fetch-btn">Controlla ora</button>
       </form>
+      {% endif %}
     </div>
     <div class="status">
-      Legge i comunicati delle aziende ogni minuto.
+      Legge i comunicati delle aziende {{ every_text }}.
       {% if last_fetch %}Ultimo controllo {{ last_fetch | when }}.{% else %}Nessun controllo ancora.{% endif %}
     </div>
     <nav aria-label="Viste">
       {% for key, (label, _) in views.items() %}
-      <a href="/?view={{ key }}&sort={{ sort }}" class="{{ 'on' if key == view else '' }}" {% if key == view %}aria-current="page"{% endif %}>{{ label }}</a>
+      <a href="{{ link(key, sort) }}" class="{{ 'on' if key == view else '' }}" {% if key == view %}aria-current="page"{% endif %}>{{ label }}</a>
       {% endfor %}
     </nav>
     <p class="intro">{{ views[view][1] }}</p>
@@ -210,13 +215,20 @@
         <b>{{ w.ticker }}</b>
         <span class="name">{{ w.name }}</span>
         <span class="market">{{ "USA" if w.market == "US" else "Europa" }}</span>
+        {% if not static %}
         <form method="post" action="/watchlist/{{ w.ticker }}/delete">
           <button class="remove" aria-label="Smetti di seguire {{ w.ticker }}">Rimuovi</button>
         </form>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
 
+    {% if static %}
+    <p class="subhead">Per aggiungere o togliere titoli modifica il file
+      <a class="link" href="{{ watchlist_edit_url }}" target="_blank" rel="noopener">watchlist.csv su GitHub</a>:
+      la pagina si aggiorna al giro successivo.</p>
+    {% else %}
     <form class="add" method="post" action="/watchlist">
       <h2>Segui un'altra azienda</h2>
       <div class="fields">
@@ -227,15 +239,18 @@
       </div>
       <button class="link submit">Aggiungi</button>
     </form>
+    {% endif %}
 
   {% elif news %}
+    {% if not static %}
     <div class="sort">
       {% for key, label in sorts.items() %}
-      <a href="/?view={{ view }}&sort={{ key }}" class="{{ 'on' if key == sort else '' }}">{{ label }}</a>
+      <a href="{{ link(view, key) }}" class="{{ 'on' if key == sort else '' }}">{{ label }}</a>
       {% endfor %}
     </div>
+    {% endif %}
     <ul class="list">{% for n in news %}{{ news_item(n) }}{% endfor %}</ul>
-    {% if hidden %}<a class="more" href="/?view={{ view }}&sort={{ sort }}&tutte=1">Mostra anche {{ hidden }} notizie poco importanti</a>{% endif %}
+    {% if hidden %}<a class="more" href="{{ link(view, sort, 1) }}">Mostra anche {{ hidden }} notizie poco importanti</a>{% endif %}
 
   {% else %}
     <div class="empty">
@@ -247,14 +262,14 @@
         <p>Qui compaiono solo notizie molto forti, da 8 su 10 in su, su aziende che non segui.</p>
       {% else %}
         <h2>Ancora nessuna notizia.</h2>
-        <p>Premi «Controlla ora» per la prima lettura.</p>
+        <p>Il radar non ha ancora letto nulla: torna tra qualche minuto.</p>
       {% endif %}
     </div>
     {% if near %}
       <p class="subhead">Le notizie più vicine a meritare la tua attenzione</p>
       <ul class="list">{% for n in near %}{{ news_item(n) }}{% endfor %}</ul>
     {% endif %}
-    {% if hidden %}<a class="more" href="/?view={{ view }}&sort={{ sort }}&tutte=1">Mostra {{ hidden }} notizie poco importanti</a>{% endif %}
+    {% if hidden %}<a class="more" href="{{ link(view, sort, 1) }}">Mostra {{ hidden }} notizie poco importanti</a>{% endif %}
   {% endif %}
   </main>
 
@@ -276,7 +291,7 @@
 </div>
 
 <script>
-  document.getElementById("fetch-form").addEventListener("submit", () => {
+  document.getElementById("fetch-form")?.addEventListener("submit", () => {
     const btn = document.getElementById("fetch-btn");
     btn.disabled = true;
     btn.textContent = "Controllo in corso…";

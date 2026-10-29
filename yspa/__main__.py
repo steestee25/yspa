@@ -5,6 +5,9 @@
     python -m yspa price BSP --since 2026-10-14T11:00:00+00:00   # quanto si è mosso da una notizia
     python -m yspa status                  # stato delle fonti
     python -m yspa export                  # notizie salvate in JSON, una per riga
+    python -m yspa site --out _site        # sito statico (GitHub Pages)
+
+Con YSPA_WATCHLIST_FILE=watchlist.csv la watchlist si legge da quel file a ogni avvio.
 """
 import argparse
 import json
@@ -14,7 +17,9 @@ import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
-from . import db, pipeline, prices
+from pathlib import Path
+
+from . import config, db, pipeline, prices, site
 
 log = logging.getLogger("yspa")
 
@@ -88,12 +93,17 @@ def main() -> None:
     price.add_argument("--since", required=True, help="istante della notizia, ISO 8601 con fuso orario")
     sub.add_parser("status")
     sub.add_parser("export")
+    site_cmd = sub.add_parser("site")
+    site_cmd.add_argument("--out", default="_site", help="cartella del sito")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     conn = db.connect()
-    db.seed_watchlist(conn)
+    if config.WATCHLIST_FILE:
+        log.info("Watchlist da %s: %d titoli", config.WATCHLIST_FILE, site.sync_watchlist(conn, Path(config.WATCHLIST_FILE)))
+    else:
+        db.seed_watchlist(conn)
 
     if args.command == "quotes":
         print_quotes(args.symbols or [w["ticker"] for w in db.get_watchlist(conn)])
@@ -108,6 +118,10 @@ def main() -> None:
         return
     if args.command == "status":
         print_status(conn)
+        return
+    if args.command == "site":
+        for path in site.build(conn, Path(args.out)):
+            print(f"  scritto {path}")
         return
     if args.command == "export":
         for n in db.list_news(conn, "all", limit=100000):

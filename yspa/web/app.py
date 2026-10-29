@@ -2,36 +2,21 @@
 
 Avvio: uvicorn yspa.web.app:app --reload
 """
-from contextlib import contextmanager
-from pathlib import Path
-from urllib.parse import urlencode
-
 import base64
 import secrets
+from contextlib import contextmanager
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from .. import config, db, pipeline
-from . import labels
-from .timefmt import calm_title, human_time, number, percent
+from . import render
 
 app = FastAPI(title="YSPA")
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.filters.update({
-    "when": human_time,
-    "calm": calm_title,
-    "num": number,
-    "pct": percent,
-    "importance": labels.importance,
-    "effect": labels.effect,
-    "event": labels.event,
-    "source": labels.source,
-    "reason": labels.reason,
-    "source_error": labels.source_error,
-})
-
+templates = Jinja2Templates(directory=render.TEMPLATES)
+templates.env.filters.update(render.FILTERS)
 
 
 @app.middleware("http")
@@ -63,39 +48,16 @@ def database():
 with database() as _conn:
     db.seed_watchlist(_conn)
 
-SORT_LABELS = {"importanza": "Prima le più importanti", "recenti": "Prima le più recenti"}
-
-
 def back_to(view: str, sort: str) -> RedirectResponse:
     return RedirectResponse("/?" + urlencode({"view": view, "sort": sort}), status_code=303)
 
 
 @app.get("/")
 def index(request: Request, view: str = "alerts", sort: str = "importanza", tutte: int = 0):
-    view = view if view in labels.VIEWS else "alerts"
-    sort = sort if sort in SORT_LABELS else "importanza"
-    # Nella vista "Tutte" le notizie poco importanti restano nascoste finché non le chiedi.
-    min_score = config.LOW_SCORE if view == "all" and not tutte else 0
     with database() as conn:
-        news = [] if view == "watchlist" else db.list_news(conn, view, sort=sort, min_score=min_score)
-        watchlist = db.get_watchlist(conn)
-        context = {
-            "news": news,
-            "hidden": db.count_below(conn, view, min_score) if min_score else 0,
-            "near": db.near_alerts(conn) if view == "alerts" and not news else [],
-            "watchlist": watchlist,
-            "names": {w["ticker"]: w["name"] for w in watchlist},
-            "last_fetch": db.last_fetch(conn),
-            "sources": db.get_source_status(conn),
-        }
-    return templates.TemplateResponse(request, "index.html", {
-        **context,
-        "view": view,
-        "views": labels.VIEWS,
-        "sort": sort,
-        "sorts": SORT_LABELS,
-        "feedback_min_score": config.ALERT_SCORE_WATCHLIST,
-    })
+        context = render.page_context(conn, view, sort, tutte)
+    context["link"] = lambda v, srt, all_=0: "/?" + urlencode({"view": v, "sort": srt, **({"tutte": 1} if all_ else {})})
+    return templates.TemplateResponse(request, "index.html", context)
 
 
 @app.get("/api/news")

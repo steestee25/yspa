@@ -12,6 +12,9 @@ FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "")
 # Se impostata, la pagina web chiede questa password (utente qualsiasi). Necessaria se la pagina è raggiungibile da internet.
 WEB_PASSWORD = os.environ.get("YSPA_PASSWORD", "")
 
+# Se impostato, la watchlist si legge da questo file CSV (usato su GitHub Pages, dove la pagina non si modifica).
+WATCHLIST_FILE = os.environ.get("YSPA_WATCHLIST_FILE", "")
+
 # Fuso orario in cui mostrare gli orari delle notizie.
 TIMEZONE = os.environ.get("YSPA_TIMEZONE", "Europe/Rome")
 

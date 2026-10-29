@@ -1,0 +1,62 @@
+name: pages
+
+# Il radar su GitHub, gratis: ogni 5 minuti un giro di raccolta, poi la pagina pubblicata su GitHub Pages.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [claude/wonderful-franklin-ay2r0p]
+    paths: ["yspa/**", "watchlist.csv", ".github/workflows/pages.yml"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un giro alla volta: il database passa dall'uno al successivo.
+concurrency:
+  group: radar-pages
+  cancel-in-progress: false
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      YSPA_DB_PATH: data/yspa.db
+      YSPA_WATCHLIST_FILE: watchlist.csv
+      YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Database del giro precedente
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: radar-db-${{ github.run_id }}
+          restore-keys: radar-db-
+      - name: Un giro di raccolta
+        run: python -m yspa fetch
+      - name: Pagine
+        run: python -m yspa site --out _site
+      - name: Salva il database per il giro successivo
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: radar-db-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

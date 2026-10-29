@@ -1,0 +1,15 @@
+# I titoli che il radar segue. Una riga per titolo: sigla,nome,mercato (US o EU),altri nomi separati da |
+# Sigle europee nel formato Yahoo: RHM.DE (Francoforte), LDO.MI (Milano), ASML.AS (Amsterdam), ARGX.BR (Bruxelles).
+ticker,nome,mercato,altri nomi
+NKE,Nike,US,Nike
+NBIS,Nebius Group,US,Nebius
+APLD,Applied Digital,US,Applied Digital
+MRNA,Moderna,US,Moderna
+SPCX,SpaceX,US,SpaceX
+BSP,Bending Spoons,US,Bending Spoons
+ASML.AS,ASML,EU,ASML
+ARGX.BR,argenx,EU,argenx
+RHM.DE,Rheinmetall,EU,Rheinmetall
+LDO.MI,Leonardo,EU,Leonardo S.p.A.|Leonardo SpA
+STMMI.MI,STMicroelectronics,EU,STMicroelectronics
+NOVO-B.CO,Novo Nordisk,EU,Novo Nordisk
