@@ -11,21 +11,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Fonti di prezzo e SEC senza chiave
-        env:
-          SEC_UA: ${{ secrets.YSPA_SEC_USER_AGENT || 'YSPA radar 223326988+steestee25@users.noreply.github.com' }}
+      - name: Formato CNBC e Nasdaq
         run: |
           B="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-          probe() { echo "=== $1"; shift; curl -sS -m 15 -w "\nHTTP %{http_code}\n" "$@" | tail -c 700; echo; }
-          probe "CNBC" -A "$B" "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=MRNA%7CBSP%7CRHM-DE%7CLDO-IT&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1"
-          probe "Nasdaq info" -A "$B" -H "Accept: application/json" "https://api.nasdaq.com/api/quote/MRNA/info?assetclass=stocks"
-          probe "Nasdaq chart" -A "$B" -H "Accept: application/json" "https://api.nasdaq.com/api/quote/MRNA/chart?assetclass=stocks"
-          curl -sS -m 15 -A "$B" -c /tmp/yc -o /dev/null https://fc.yahoo.com || true
-          CRUMB=$(curl -sS -m 15 -A "$B" -b /tmp/yc https://query2.finance.yahoo.com/v1/test/getcrumb || true)
-          echo "crumb: ${CRUMB:0:20}"
-          probe "Yahoo con crumb" -A "$B" -b /tmp/yc "https://query2.finance.yahoo.com/v8/finance/chart/MRNA?range=1d&interval=5m&crumb=$CRUMB"
-          probe "Yahoo spark" -A "$B" "https://query1.finance.yahoo.com/v7/finance/spark?symbols=MRNA&range=1d&interval=5m"
-          probe "SEC atom (UA secret o default)" -A "$SEC_UA" "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=5&output=atom"
-          probe "SEC data.sec.gov" -A "$SEC_UA" "https://data.sec.gov/submissions/CIK0001682852.json"
-          probe "SEC tickers" -A "$SEC_UA" "https://www.sec.gov/files/company_tickers.json"
-          probe "SEC efts" -A "$SEC_UA" "https://efts.sec.gov/LATEST/search-index?q=%22Moderna%22&forms=8-K"
+          curl -sS -m 20 -A "$B" "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=MRNA%7CBSP%7CSPCX%7CNBIS%7CRHM-DE%7CASML-NL%7CARGX-BE%7CNOVOB-DK%7CSTMMI-IT%7CLDO-IT%7CONCY%7CXXXXNOPE&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1" > cnbc.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("cnbc.json"))
+          quotes = d["FormattedQuoteResult"]["FormattedQuote"]
+          print("chiavi:", sorted(quotes[0].keys()))
+          for q in quotes:
+              ext = q.get("ExtendedMktQuote") or {}
+              print({k: q.get(k) for k in ("symbol", "code", "name", "last", "last_time", "previous_day_closing", "change_pct", "currencyCode", "exchange", "curmktstatus", "timeZone")}, "| ext:", {k: ext.get(k) for k in ("type", "last", "last_time", "change_pct")})
+          PY
+          for s in MRNA BSP; do
+            curl -sS -m 20 -A "$B" -H "Accept: application/json" "https://api.nasdaq.com/api/quote/$s/chart?assetclass=stocks" > n.json
+            python3 - "$s" <<'PY'
+          import json, sys
+          d = json.load(open("n.json"))["data"] or {}
+          print(sys.argv[1], "chiavi:", sorted(d.keys()))
+          print({k: d.get(k) for k in d if k != "chart"})
+          ch = d.get("chart") or []
+          print("barre:", len(ch), "prima:", ch[:1], "ultima:", ch[-1:])
+          PY
+          done
