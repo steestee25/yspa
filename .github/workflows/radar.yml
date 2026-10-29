@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [claude/wonderful-franklin-ay2r0p]
-    paths: ["yspa/**", "tests/**", "requirements*.txt", "Dockerfile", "docker-compose.yml", ".github/workflows/radar.yml"]
+    paths: ["yspa/**", "tests/**", "requirements*.txt", "Dockerfile", "docker-compose.yml", "deploy/**", ".github/workflows/radar.yml"]
 
 jobs:
   test:
@@ -58,3 +58,28 @@ jobs:
           docker compose ps
           docker compose logs --tail 20 radar
           docker compose down
+
+  deploy:
+    # Esegue lo script di installazione del server su una macchina Ubuntu pulita, come su Oracle Cloud.
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck deploy/setup-server.sh
+      - name: Installazione (scarica il codice da GitHub, come sul server vero)
+        run: |
+          sudo YSPA_SEC_USER_AGENT="Prova Installazione prova@example.com" YSPA_PASSWORD="prova123" \
+               YSPA_DOMAIN="localhost" YSPA_BRANCH="${{ github.ref_name }}" bash deploy/setup-server.sh < /dev/null
+      - name: HTTPS con password
+        run: |
+          curl -sk -o /dev/null -w "senza password: HTTP %{http_code}\n" https://localhost/
+          curl -sk -o /dev/null -w "con password:   HTTP %{http_code}\n" -u io:prova123 https://localhost/
+          test "$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/)" = 401
+          test "$(curl -sk -o /dev/null -w '%{http_code}' -u io:prova123 https://localhost/)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/)" = 401
+      - name: Seconda esecuzione = aggiornamento, impostazioni conservate
+        run: |
+          sudo YSPA_BRANCH="${{ github.ref_name }}" bash deploy/setup-server.sh < /dev/null
+          sudo grep -q 'YSPA_PASSWORD="prova123"' /opt/yspa/.env
+          cd /opt/yspa && sudo docker compose --profile https ps

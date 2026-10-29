@@ -1,0 +1,6 @@
+# HTTPS automatico (Let's Encrypt) davanti alla pagina web.
+# YSPA_DOMAIN: es. 141-147-10-20.sslip.io (indirizzo gratuito che punta all'IP del server).
+{$YSPA_DOMAIN} {
+	encode gzip
+	reverse_proxy web:8000
+}

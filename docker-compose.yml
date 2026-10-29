@@ -1,4 +1,6 @@
-# Avvio: docker compose up -d   (impostazioni nel file .env, vedi .env.example)
+# Avvio locale:   docker compose up -d                  (pagina su http://localhost:8000)
+# Avvio server:   docker compose --profile https up -d  (HTTPS su YSPA_DOMAIN, vedi deploy/setup-server.sh)
+# Impostazioni nel file .env (vedi .env.example).
 services:
   radar:
     build: .
@@ -11,10 +13,25 @@ services:
     build: .
     env_file: .env
     volumes: ["./data:/data"]
-    ports: ["8000:8000"]
+    # Solo da questo computer, salvo YSPA_BIND=0.0.0.0: da fuori si passa da Caddy, in HTTPS.
+    ports: ["${YSPA_BIND:-127.0.0.1}:8000:8000"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
       interval: 60s
       timeout: 10s
       retries: 3
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    env_file: .env
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:

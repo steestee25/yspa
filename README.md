@@ -23,6 +23,33 @@ Non compra né vende nulla: segnala, decidi tu. Non è consulenza finanziaria.
 6. **Pagina web**: da guardare, titoli nuovi, tutte le notizie, watchlist modificabile, risposte
    "Mi interessa / Ignora", stato di ogni fonte. `/health` restituisce lo stato in JSON.
 
+## Server cloud gratuito (Oracle Cloud "Always Free")
+
+Una macchina sempre accesa, gratis. Oracle chiede una carta solo per verificare l'identità:
+le risorse "Always Free" non vengono addebitate.
+
+1. **Account**: registrati su <https://cloud.oracle.com> (scegli una regione vicina, es. Milano o Francoforte:
+   non si cambia dopo).
+2. **Macchina**: menu ☰ → *Compute* → *Instances* → *Create instance*.
+   - *Image*: **Ubuntu 24.04**.
+   - *Shape*: **VM.Standard.A1.Flex** (Ampere) con 1 OCPU e 6 GB, contrassegnata "Always Free-eligible".
+     Se dice "Out of capacity", usa **VM.Standard.E2.1.Micro** (anche lei gratuita).
+   - *Add SSH keys*: **Generate a key pair for me** e scarica la chiave privata.
+   - *Create*. Annota il **Public IP address**.
+3. **Porte 80 e 443**: nella pagina dell'istanza → *Subnet* → *Security Lists* → *Default Security List*
+   → *Add Ingress Rules*: Source CIDR `0.0.0.0/0`, IP Protocol TCP, Destination Port Range `80,443`.
+4. **Collegati** dal tuo computer (Mac/Linux: Terminale; Windows: PowerShell):
+   ```bash
+   ssh -i chiave-scaricata.key ubuntu@IP-DEL-SERVER
+   ```
+5. **Installa** (un comando; chiede nome ed email per la SEC):
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/steestee25/yspa/claude/wonderful-franklin-ay2r0p/deploy/setup-server.sh | sudo bash
+   ```
+   Alla fine stampa indirizzo (`https://IP-con-trattini.sslip.io`) e password. Il certificato HTTPS si
+   ottiene da solo in circa un minuto.
+6. **Aggiornare**: rilancia lo stesso comando. Impostazioni e dati restano.
+
 ## Avvio in produzione (Docker)
 
 Su un computer o server sempre acceso:
@@ -32,8 +59,10 @@ cp .env.example .env      # poi compila YSPA_SEC_USER_AGENT e, se esposto in ret
 docker compose up -d
 ```
 
-Pagina su `http://localhost:8000`. Due servizi: `radar` (raccolta) e `web` (pagina), con riavvio
-automatico e database in `./data`. Log: `docker compose logs -f radar`.
+Pagina su `http://localhost:8000` (solo da quel computer; `YSPA_BIND=0.0.0.0` per la rete di casa).
+Due servizi: `radar` (raccolta) e `web` (pagina), con riavvio automatico e database in `./data`.
+Con `--profile https` parte anche Caddy, che espone la pagina in HTTPS su `YSPA_DOMAIN`.
+Log: `docker compose logs -f radar`.
 
 ## Avvio senza Docker
 
