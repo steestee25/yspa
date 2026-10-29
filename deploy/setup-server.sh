@@ -66,8 +66,10 @@ FINNHUB_API_KEY=""
 ENV
   echo "Salvate in $DIR/.env"
 fi
+set -a
 # shellcheck disable=SC1091
-set -a; . ./.env; set +a
+. ./.env
+set +a
 
 say "4/5 Firewall (porte 80 e 443)"
 # Le immagini Ubuntu di Oracle Cloud bloccano tutto tranne SSH con una regola REJECT in iptables.
