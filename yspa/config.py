@@ -15,6 +15,9 @@ WEB_PASSWORD = os.environ.get("YSPA_PASSWORD", "")
 # Se impostato, la watchlist si legge da questo file CSV (usato su GitHub Pages, dove la pagina non si modifica).
 WATCHLIST_FILE = os.environ.get("YSPA_WATCHLIST_FILE", "")
 
+# Come la pagina descrive la frequenza dei controlli.
+RUN_EVERY_TEXT = os.environ.get("YSPA_RUN_EVERY_TEXT", "ogni minuto")
+
 # Fuso orario in cui mostrare gli orari delle notizie.
 TIMEZONE = os.environ.get("YSPA_TIMEZONE", "Europe/Rome")
 

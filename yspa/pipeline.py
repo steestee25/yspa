@@ -114,6 +114,26 @@ def update_prices(conn, quotes_for=prices.best_quotes) -> int:
     return updated
 
 
+def refresh_watchlist_quotes(conn, quotes_for=prices.watchlist_quotes) -> int:
+    """Salva la quotazione attuale di ogni titolo seguito (e, per gli USA, le barre di oggi)."""
+    symbols = [w["ticker"] for w in db.get_watchlist(conn)]
+    if not symbols:
+        return 0
+    errors: dict[str, str] = {}
+    quotes = quotes_for(symbols, errors)
+    for symbol, q in quotes.items():
+        for t, price in zip(q.times, q.closes):  # barre di oggi: mini grafico completo anche al primo giro
+            db.save_quote(conn, symbol, t, price, q.currency, q.prev_close, q.source)
+        db.save_quote(conn, symbol, q.last_time, q.last, q.currency, q.prev_close, q.source)
+    missing = [s for s in symbols if s not in quotes]
+    detail = "; ".join(f"{k}: {v}" for k, v in errors.items())
+    if missing:
+        detail = (detail + "; " if detail else "") + "senza prezzo: " + ", ".join(missing)
+    db.set_source_status(conn, "Prezzi dei tuoi titoli", bool(quotes), detail, items=len(quotes))
+    db.purge_quotes(conn, int(datetime.now().timestamp()) - 3 * 24 * 3600)
+    return len(quotes)
+
+
 def run_once(conn) -> list[dict]:
     """Esegue un giro completo e restituisce le nuove segnalazioni."""
     watchlist = db.get_watchlist(conn)
@@ -132,8 +152,10 @@ def run_once(conn) -> list[dict]:
             new_alerts.append(item)
     db.purge_sec_noise(conn, config.SEC_MIN_SCORE)
     db.purge_old(conn, config.KEEP_DAYS, config.LOW_SCORE)
-    try:
-        update_prices(conn)
-    except Exception as exc:  # i prezzi sono un di più: non devono fermare la raccolta
-        log.exception("Aggiornamento prezzi fallito: %s", exc)
+    # I prezzi sono un di più: non devono fermare la raccolta.
+    for step in (update_prices, refresh_watchlist_quotes):
+        try:
+            step(conn)
+        except Exception as exc:
+            log.exception("%s fallito: %s", step.__name__, exc)
     return new_alerts

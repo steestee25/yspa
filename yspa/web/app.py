@@ -5,18 +5,17 @@ Avvio: uvicorn yspa.web.app:app --reload
 import base64
 import secrets
 from contextlib import contextmanager
-from urllib.parse import urlencode
 
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
-from .. import config, db, pipeline
+from .. import config, db, export, pipeline, site
 from . import render
 
 app = FastAPI(title="YSPA")
-templates = Jinja2Templates(directory=render.TEMPLATES)
-templates.env.filters.update(render.FILTERS)
+app.mount("/static", StaticFiles(directory=render.STATIC), name="static")
 
 
 @app.middleware("http")
@@ -48,22 +47,21 @@ def database():
 with database() as _conn:
     db.seed_watchlist(_conn)
 
-def back_to(view: str, sort: str) -> RedirectResponse:
-    return RedirectResponse("/?" + urlencode({"view": view, "sort": sort}), status_code=303)
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return site.render_page("server", base="/")
 
 
-@app.get("/")
-def index(request: Request, view: str = "alerts", sort: str = "importanza", tutte: int = 0):
+@app.get("/data.json")
+def data():
     with database() as conn:
-        context = render.page_context(conn, view, sort, tutte)
-    context["link"] = lambda v, srt, all_=0: "/?" + urlencode({"view": v, "sort": srt, **({"tutte": 1} if all_ else {})})
-    return templates.TemplateResponse(request, "index.html", context)
+        return export.build_data(conn)
 
 
-@app.get("/api/news")
-def api_news(view: str = "alerts", sort: str = "importanza"):
+@app.get("/tickers.json")
+def tickers():
     with database() as conn:
-        return db.list_news(conn, view, sort=sort)
+        return export.build_ticker_index(db.get_watchlist(conn))
 
 
 @app.get("/health")
@@ -75,31 +73,30 @@ def health():
                 "ok": bool(sources) and any(s["ok"] for s in sources)}
 
 
-@app.post("/fetch")
-def fetch_now(view: str = Form("alerts"), sort: str = Form("importanza")):
+class NewTicker(BaseModel):
+    ticker: str = Field(min_length=1, max_length=20, pattern=r"^[A-Za-z0-9.\-]+$")
+    name: str = Field(min_length=1, max_length=120)
+    market: str = "US"
+    aliases: str = ""
+
+
+@app.post("/api/watchlist", status_code=201)
+def add_ticker(item: NewTicker):
+    aliases = [a.strip() for a in item.aliases.split("|") if a.strip()] or [item.name]
     with database() as conn:
-        pipeline.run_once(conn)
-    return back_to(view, sort)
+        db.add_to_watchlist(conn, item.ticker.strip().upper(), item.name.strip(), aliases, item.market)
+    return {"ok": True}
 
 
-@app.post("/watchlist")
-def add_ticker(ticker: str = Form(...), name: str = Form(...), aliases: str = Form(""), market: str = Form("US")):
-    alias_list = [a.strip() for a in aliases.split(",") if a.strip()] or [name]
-    with database() as conn:
-        db.add_to_watchlist(conn, ticker.strip(), name.strip(), alias_list, market)
-    return back_to("watchlist", "importanza")
-
-
-@app.post("/watchlist/{ticker}/delete")
+@app.delete("/api/watchlist/{ticker}")
 def delete_ticker(ticker: str):
     with database() as conn:
         db.remove_from_watchlist(conn, ticker)
-    return back_to("watchlist", "importanza")
+    return {"ok": True}
 
 
-@app.post("/news/{news_id}/feedback")
-def feedback(news_id: int, value: str = Form(...), view: str = Form("alerts"), sort: str = Form("importanza")):
-    if value in ("interessa", "ignora"):
-        with database() as conn:
-            db.set_feedback(conn, news_id, value)
-    return back_to(view, sort)
+@app.post("/api/fetch")
+def fetch_now():
+    with database() as conn:
+        pipeline.run_once(conn)
+    return {"ok": True}

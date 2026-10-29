@@ -33,6 +33,7 @@ jobs:
     env:
       YSPA_DB_PATH: data/yspa.db
       YSPA_WATCHLIST_FILE: watchlist.csv
+      YSPA_RUN_EVERY_TEXT: ogni 5 minuti circa
       YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
     steps:

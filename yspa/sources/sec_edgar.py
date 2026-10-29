@@ -69,6 +69,15 @@ def load_cik_to_ticker(cache_path: Path | None = None) -> dict[int, str]:
     return {int(row["cik_str"]): row["ticker"] for row in data.values()}
 
 
+def load_companies(cache_path: Path | None = None) -> list[tuple[str, str]]:
+    """(ticker, nome) delle società quotate negli USA, dalla cache SEC; vuota se non c'è ancora."""
+    cache_path = cache_path or config.DB_PATH.parent / "sec_tickers.json"
+    if not cache_path.exists():
+        return []
+    data = json.loads(cache_path.read_text())
+    return [(row["ticker"], row["title"]) for row in data.values()]
+
+
 def parse_feed(xml: str, cik_to_ticker: dict[int, str]) -> list[dict]:
     items = []
     for entry in feedparser.parse(xml).entries:

@@ -260,6 +260,32 @@ def best_quotes(requests: dict[str, datetime], errors: dict[str, str] | None = N
     return out
 
 
+def watchlist_quotes(symbols: list[str], errors: dict[str, str] | None = None) -> dict[str, Quote]:
+    """Quotazioni dei titoli seguiti, per le schede della pagina.
+
+    CNBC per tutti in una sola richiesta (USA ed Europa); per i titoli USA anche Nasdaq, che aggiunge
+    le barre al minuto di oggi per il mini grafico e ha la precedenza quando risponde."""
+    errors = errors if errors is not None else {}
+    out: dict[str, Quote] = {}
+    try:
+        out.update(cnbc_quotes(symbols))
+    except Exception as exc:
+        errors["CNBC"] = _short(exc)
+    for symbol in symbols:
+        if not is_us(symbol):
+            continue
+        try:
+            quote = nasdaq_chart(symbol)
+        except Exception as exc:
+            errors["Nasdaq"] = _short(exc)
+            continue
+        if quote and quote.last is not None:
+            if quote.prev_close is None and symbol in out:
+                quote.prev_close = out[symbol].prev_close
+            out[symbol] = quote
+    return out
+
+
 def _short(exc: Exception) -> str:
     return f"{exc.__class__.__name__}: {str(exc).splitlines()[0][:160]}"
 

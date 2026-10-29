@@ -1,12 +1,5 @@
 """Parole semplici al posto dei codici interni, per l'interfaccia."""
 
-VIEWS = {
-    "alerts": ("Da guardare", "Notizie sui tuoi titoli che possono muovere il prezzo."),
-    "discover": ("Nuovi", "Notizie forti su aziende che non segui ancora."),
-    "all": ("Tutte", "Tutto ciò che il radar ha letto, dalle più importanti."),
-    "watchlist": ("I miei titoli", "Le aziende che il radar controlla per te."),
-}
-
 EFFECTS = {
     "su": "Può far salire il prezzo",
     "giù": "Può far scendere il prezzo",

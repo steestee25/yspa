@@ -92,23 +92,24 @@ def test_finnhub_parse():
     assert item["uid"] == "finnhub:7" and item["tickers"] == ["NBIS"]
 
 
-def test_web_pages(tmp_path, monkeypatch):
+def test_web_server_page_data_and_watchlist_api(tmp_path, monkeypatch):
     monkeypatch.setattr("yspa.config.DB_PATH", tmp_path / "web.db")
     from fastapi.testclient import TestClient
     import importlib
     import yspa.web.app as web
     importlib.reload(web)
     client = TestClient(web.app)
-    assert "Bending Spoons" in client.get("/?view=watchlist").text
-    client.post("/watchlist", data={"ticker": "pltr", "name": "Palantir", "market": "US"})
-    conn = db.connect(tmp_path / "web.db")
-    assert any(w["ticker"] == "PLTR" for w in db.get_watchlist(conn))
-    client.post("/watchlist/PLTR/delete")
-    assert not any(w["ticker"] == "PLTR" for w in db.get_watchlist(conn))
-    assert client.get("/api/news").json() == []
+    page = client.get("/").text
+    assert client.get("/static/fonts/manrope-latin-wght-normal.woff2").status_code == 200
+    assert '"mode": "server"' in page and '"data_url": "/data.json"' in page
+    data = client.get("/data.json").json()
+    assert any(w["ticker"] == "BSP" and w["name"] == "Bending Spoons" for w in data["watchlist"])
+    assert client.post("/api/watchlist", json={"ticker": "pltr", "name": "Palantir", "market": "US"}).status_code == 201
+    assert any(w["ticker"] == "PLTR" for w in client.get("/data.json").json()["watchlist"])
+    assert client.post("/api/watchlist", json={"ticker": "bad ticker!", "name": "x"}).status_code == 422
+    client.delete("/api/watchlist/PLTR")
+    assert not any(w["ticker"] == "PLTR" for w in client.get("/data.json").json()["watchlist"])
     assert client.get("/health").json()["ok"] is False  # nessuna fonte controllata ancora
-    for view in ("alerts", "discover", "all", "watchlist"):
-        assert client.get(f"/?view={view}").status_code == 200
 
 
 def test_ticker_from_full_page_when_feed_is_truncated(conn):
@@ -127,16 +128,6 @@ def test_unimportant_news_does_not_download_page(conn):
     raw = {"uid": "y", "source": "prnewswire", "url": "https://example.com/x", "tickers": [], "sec_items": [],
            "published_at": "2026-10-27T13:30:00+00:00", "title": "Company wins design award", "summary": ""}
     pipeline.enrich(raw, db.get_watchlist(conn), page_reader=lambda url: pytest.fail("non doveva scaricare"))
-
-
-def test_human_time():
-    from datetime import datetime, timezone
-    from yspa.web.timefmt import human_time
-    now = datetime(2026, 10, 27, 16, 0, tzinfo=timezone.utc)
-    assert human_time("2026-10-27T14:15:00+00:00", now) == "oggi 15:15"   # Roma = UTC+1 dopo il 25 ottobre
-    assert human_time("2026-10-26T17:02:00+00:00", now) == "ieri 18:02"
-    assert human_time("2026-08-19T10:45:00+00:00", now) == "19 ago 12:45"  # ora legale: UTC+2
-    assert human_time("2025-12-01T10:00:00+00:00", now) == "1 dic 2025"
 
 
 def test_sort_by_importance_and_near_alerts(conn):
@@ -199,6 +190,7 @@ def test_web_password(tmp_path, monkeypatch):
     assert client.get("/").status_code == 401
     assert client.get("/", auth=("io", "sbagliata")).status_code == 401
     assert client.get("/", auth=("io", "segreta")).status_code == 200
+    assert client.post("/api/watchlist", json={"ticker": "X", "name": "X"}).status_code == 401
     assert client.get("/health").status_code == 200
 
 
@@ -216,6 +208,7 @@ def test_known_news_is_not_reanalysed(conn, monkeypatch):
     raw = rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text())
     monkeypatch.setattr(pipeline, "collect", lambda c, w: raw)
     monkeypatch.setattr(pipeline, "update_prices", lambda c: 0)
+    monkeypatch.setattr(pipeline, "refresh_watchlist_quotes", lambda c: 0)
     pages = []
     monkeypatch.setattr(pipeline, "tickers_from_page", lambda url: pages.append(url) or "")
     calls = []

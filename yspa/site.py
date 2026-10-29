@@ -1,44 +1,45 @@
-"""Sito statico per GitHub Pages: le stesse pagine del server, solo da leggere."""
+"""Sito statico per GitHub Pages: la pagina, i suoi dati (data.json) e l'elenco per la ricerca (tickers.json)."""
 import csv
+import json
 import os
+import shutil
 from pathlib import Path
 
-from . import db
+from . import db, export
 from .web import render
 
-PAGES = {  # vista -> file
-    ("alerts", 0): "index.html",
-    ("discover", 0): "nuovi.html",
-    ("all", 0): "tutte.html",
-    ("all", 1): "tutte-complete.html",
-    ("watchlist", 0): "titoli.html",
-}
+
+def page_config(mode: str, base: str = "") -> dict:
+    """mode "static" (GitHub Pages: modifiche via API di GitHub) o "server" (modifiche via /api)."""
+    return {
+        "mode": mode,
+        "repo": os.environ.get("GITHUB_REPOSITORY", "steestee25/yspa"),
+        "branch": os.environ.get("GITHUB_REF_NAME", "claude/wonderful-franklin-ay2r0p"),
+        "data_url": f"{base}data.json",
+        "tickers_url": f"{base}tickers.json",
+        "api": f"{base}api",
+    }
 
 
-def link(view: str, sort: str = "importanza", all_: int = 0) -> str:
-    return PAGES.get((view, all_), PAGES.get((view, 0), "index.html"))
+def render_page(mode: str, base: str = "") -> str:
+    return render.environment().get_template("app.html").render(config=page_config(mode, base))
 
 
 def build(conn, out: Path) -> list[Path]:
-    repo = os.environ.get("GITHUB_REPOSITORY", "steestee25/yspa")
-    branch = os.environ.get("GITHUB_REF_NAME", "claude/wonderful-franklin-ay2r0p")
-    env = render.environment()
-    template = env.get_template("index.html")
     out.mkdir(parents=True, exist_ok=True)
+    data = export.build_data(conn)
+    files = {
+        "index.html": render_page("static"),
+        "data.json": json.dumps(data, ensure_ascii=False, separators=(",", ":")),
+        "tickers.json": json.dumps(export.build_ticker_index(db.get_watchlist(conn)), ensure_ascii=False, separators=(",", ":")),
+        ".nojekyll": "",
+    }
     written = []
-    for (view, all_), filename in PAGES.items():
-        context = render.page_context(conn, view, "importanza", all_)
-        context.update(
-            static=True,
-            link=link,
-            every_text="ogni 5 minuti circa",
-            run_url=f"https://github.com/{repo}/actions/workflows/pages.yml",
-            watchlist_edit_url=f"https://github.com/{repo}/edit/{branch}/watchlist.csv",
-        )
-        path = out / filename
-        path.write_text(template.render(**context), encoding="utf-8")
+    for name, content in files.items():
+        path = out / name
+        path.write_text(content, encoding="utf-8")
         written.append(path)
-    (out / ".nojekyll").write_text("")
+    shutil.copytree(render.STATIC, out / "static", dirs_exist_ok=True)
     return written
 
 

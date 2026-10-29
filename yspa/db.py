@@ -33,6 +33,15 @@ CREATE TABLE IF NOT EXISTS news (
     feedback      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC);
+CREATE TABLE IF NOT EXISTS quotes (
+    ticker      TEXT NOT NULL,
+    time        INTEGER NOT NULL,
+    price       REAL NOT NULL,
+    currency    TEXT NOT NULL DEFAULT '',
+    prev_close  REAL,
+    source      TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (ticker, time)
+);
 CREATE TABLE IF NOT EXISTS source_status (
     name        TEXT PRIMARY KEY,
     ok          INTEGER NOT NULL,
@@ -242,4 +251,27 @@ def set_prices(conn, news_id: int, move: dict | None) -> None:
 
 def set_feedback(conn, news_id: int, feedback: str) -> None:
     conn.execute("UPDATE news SET feedback = ? WHERE id = ?", (feedback, news_id))
+    conn.commit()
+
+
+def save_quote(conn, ticker: str, time: int, price: float, currency: str, prev_close: float | None, source: str) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO quotes (ticker, time, price, currency, prev_close, source) VALUES (?, ?, ?, ?, ?, ?)",
+        (ticker, time, price, currency, prev_close, source),
+    )
+    conn.commit()
+
+
+def quote_history(conn, ticker: str, since: int) -> list[dict]:
+    rows = conn.execute("SELECT * FROM quotes WHERE ticker = ? AND time >= ? ORDER BY time", (ticker, since))
+    return [dict(r) for r in rows]
+
+
+def latest_quote(conn, ticker: str) -> dict | None:
+    row = conn.execute("SELECT * FROM quotes WHERE ticker = ? ORDER BY time DESC LIMIT 1", (ticker,)).fetchone()
+    return dict(row) if row else None
+
+
+def purge_quotes(conn, before: int) -> None:
+    conn.execute("DELETE FROM quotes WHERE time < ?", (before,))
     conn.commit()

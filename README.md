@@ -20,8 +20,13 @@ Non compra né vende nulla: segnala, decidi tu. Non è consulenza finanziaria.
    Yahoo Finance (storico) → Nasdaq (barre al minuto di oggi, solo USA) → CNBC (ultimo prezzo, USA ed Europa).
    Il prezzo "prima" è quello prima della notizia quando le barre lo coprono; altrimenti quello del primo
    controllo del radar, e la pagina lo dice.
-6. **Pagina web**: da guardare, titoli nuovi, tutte le notizie, watchlist modificabile, risposte
-   "Mi interessa / Ignora", stato di ogni fonte. `/health` restituisce lo stato in JSON.
+6. **Pagina web** (una sola pagina, si aggiorna da sola ogni minuto):
+   - ricerca tra circa 10.000 società quotate negli USA (elenco SEC) e inserimento a mano dei titoli
+     europei scegliendo la borsa; **Segui** aggiunge il titolo, i tre puntini lo tolgono;
+   - una scheda per ogni titolo seguito: prezzo, variazione di oggi, grafico della giornata, ultima notizia
+     (su telefono diventano righe, come nell'app Azioni);
+   - "Da guardare" con le segnalazioni, notizie filtrabili, stato delle fonti.
+   `data.json` contiene i dati della pagina, `/health` lo stato delle fonti.
 
 ## Su GitHub, gratis e senza carta (consigliato per iniziare)
 
@@ -33,6 +38,10 @@ Da fare una volta sola:
 1. GitHub → repository → **Settings → Pages** → *Build and deployment* → *Source*: **GitHub Actions**.
 2. (Consigliato) **Settings → Secrets and variables → Actions → New repository secret**:
    nome `YSPA_SEC_USER_AGENT`, valore `Nome Cognome tua@email.com`.
+3. Per aggiungere e togliere titoli dalla pagina: rotellina in alto → crea un token su
+   <https://github.com/settings/personal-access-tokens/new> con accesso solo a questo repository e
+   permesso **Contents: Read and write**, e incollalo. Il token resta in quel browser; la pagina modifica
+   `watchlist.csv` e il radar segue il nuovo titolo dal giro successivo.
 
 Differenze rispetto a un server: la pagina è pubblica e si legge soltanto; la watchlist si cambia
 modificando `watchlist.csv`; GitHub esegue i giri ogni 5 minuti, a volte in ritardo; da GitHub

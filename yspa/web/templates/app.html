@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F4F5F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0D0C" media="(prefers-color-scheme: dark)">
+<title>Radar</title>
+<link rel="preload" href="static/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* Caratteri inclusi nel sito (licenza SIL OFL, vedi static/fonts): nessuna dipendenza esterna. */
+  @font-face { font-family: "Manrope"; src: url("static/fonts/manrope-latin-wght-normal.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+  @font-face { font-family: "Bricolage Grotesque"; src: url("static/fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+  :root {
+    --bg: #F4F5F0;
+    --surface: #FFFFFF;
+    --surface-2: #EEF0EA;
+    --ink: #0E1111;
+    --muted: #666C66;
+    --faint: #A3A8A1;
+    --line: #E3E6DE;
+    --up: #0A9447;
+    --up-soft: rgba(10, 148, 71, 0.10);
+    --down: #DC3B3F;
+    --down-soft: rgba(220, 59, 63, 0.10);
+    --lime: #D4FF3A;
+    --lime-ink: #1D2400;
+    --shadow: 0 1px 2px rgba(14, 17, 17, 0.04), 0 8px 24px -12px rgba(14, 17, 17, 0.10);
+    --radius: 18px;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --display: "Bricolage Grotesque", "Manrope", system-ui, sans-serif;
+    --text: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B0D0C;
+      --surface: #151816;
+      --surface-2: #1C201D;
+      --ink: #F2F4EF;
+      --muted: #969C93;
+      --faint: #5F655D;
+      --line: #252A26;
+      --up: #3DDC84;
+      --up-soft: rgba(61, 220, 132, 0.12);
+      --down: #FF6B6B;
+      --down-soft: rgba(255, 107, 107, 0.12);
+      --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 500 15px/1.45 var(--text); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+  /* Testata */
+  header { padding: max(24px, env(safe-area-inset-top)) 0 8px; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand h1 { margin: 0; font: 700 30px/1 var(--display); letter-spacing: -0.03em; }
+  .live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 3px var(--up-soft); }
+  .live.stale i { background: var(--faint); box-shadow: none; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); transition: transform 160ms var(--ease-out), background-color 160ms ease; }
+  .icon-btn:active { transform: scale(0.95); }
+  @media (hover: hover) and (pointer: fine) { .icon-btn:hover { background: var(--surface-2); color: var(--ink); } }
+
+  /* Ricerca */
+  .search { position: relative; margin: 18px 0 8px; }
+  .search input {
+    width: 100%; height: 54px; padding: 0 18px 0 50px; border-radius: 16px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink); font: 600 16px var(--text); box-shadow: var(--shadow);
+  }
+  .search input::placeholder { color: var(--faint); font-weight: 500; }
+  .search input::-webkit-search-cancel-button { -webkit-appearance: none; width: 18px; height: 18px; cursor: pointer;
+    background: var(--faint); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' stroke='black' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+  .search input:focus { outline: none; border-color: var(--ink); }
+  .search svg { position: absolute; left: 18px; top: 17px; color: var(--muted); pointer-events: none; }
+  .results {
+    position: absolute; z-index: 20; left: 0; right: 0; top: 60px; margin: 0; padding: 6px; list-style: none;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 40px -12px rgba(0,0,0,.25);
+    max-height: min(420px, 60vh); overflow: auto; transform-origin: top center;
+    transition: opacity 150ms ease, transform 150ms var(--ease-out);
+  }
+  .results[hidden] { display: block; opacity: 0; transform: scale(0.98) translateY(-4px); pointer-events: none; visibility: hidden; }
+  .result { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 12px; }
+  .result.active { background: var(--surface-2); }
+  .result .sym { font: 700 15px var(--display); min-width: 74px; }
+  .result .nm { flex: 1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result .tag { font-size: 12px; color: var(--faint); }
+  .result.custom { gap: 8px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; margin-top: 4px; padding-top: 12px; }
+  .result.custom .lbl { flex: 1; min-width: 0; color: var(--muted); font-size: 14px; }
+  .result.custom .lbl b { color: var(--ink); }
+  .result.custom:first-child { border-top: 0; margin-top: 0; }
+  .result select { font: 600 13px var(--text); color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+  .pill-btn {
+    flex: none; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--ink); color: var(--bg);
+    font-weight: 700; font-size: 13px; transition: transform 160ms var(--ease-out), opacity 160ms ease;
+  }
+  .pill-btn:active { transform: scale(0.97); }
+  .pill-btn[disabled] { opacity: .45; cursor: default; }
+  .pill-btn.ghost { background: var(--surface-2); color: var(--ink); }
+  .following { font-size: 13px; color: var(--muted); font-weight: 600; padding: 0 6px; }
+
+  /* Sezioni */
+  section { margin-top: 30px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .sec-head h2 { margin: 0; font: 700 21px/1.2 var(--display); letter-spacing: -0.02em; }
+  .sec-head p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  /* Da guardare */
+  .alerts { display: grid; gap: 12px; }
+  .alert {
+    display: grid; gap: 6px; padding: 16px 18px; border-radius: var(--radius); background: var(--lime); color: var(--lime-ink);
+    text-decoration: none; transition: transform 160ms var(--ease-out);
+  }
+  .alert:active { transform: scale(0.99); }
+  .alert .k { display: flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; }
+  .alert .t { font: 700 18px/1.3 var(--display); letter-spacing: -0.01em; }
+  .alert .m { font-size: 13px; opacity: .75; }
+  .calm { padding: 16px 18px; border-radius: var(--radius); border: 1px dashed var(--line); color: var(--muted); }
+
+  /* Schede dei titoli */
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .card {
+    position: relative; display: grid; gap: 10px 8px; padding: 16px 16px 14px; border-radius: var(--radius);
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "id act" "price price" "sp sp" "news news";
+    background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--line); min-height: 210px;
+  }
+  .card .id { grid-area: id; min-width: 0; }
+  .card .act { grid-area: act; display: flex; gap: 6px; align-items: flex-start; }
+  .card .price { grid-area: price; }
+  .card .sp { grid-area: sp; }
+  .card .news { grid-area: news; align-self: end; }
+  .card .sym { font: 700 19px/1.1 var(--display); letter-spacing: -0.02em; }
+  .card .nm { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+  .card .flag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--lime); color: var(--lime-ink); white-space: nowrap; }
+  .price { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .price b { font: 700 26px/1 var(--display); letter-spacing: -0.02em; }
+  .price .cur { color: var(--muted); font-size: 13px; }
+  .chg { font-size: 13px; font-weight: 700; padding: 3px 8px; border-radius: 8px; }
+  .chg.up { color: var(--up); background: var(--up-soft); }
+  .chg.down { color: var(--down); background: var(--down-soft); }
+  .chg.flat { color: var(--muted); background: var(--surface-2); }
+  .spark { width: 100%; height: 44px; display: block; }
+  .spark-empty { display: flex; align-items: center; font-size: 12px; color: var(--faint); border-bottom: 1px dashed var(--line); }
+  .card .news { padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; }
+  .card .news a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-decoration: none; font-weight: 600; }
+  @media (hover: hover) and (pointer: fine) { .card .news a:hover { text-decoration: underline; } }
+  .card .news span { color: var(--faint); }
+  .card .none { color: var(--faint); }
+  .card .none .short { display: none; }
+  .card.pending { border-style: dashed; box-shadow: none; background: transparent; display: block; }
+  .card.pending .wait { color: var(--muted); font-size: 13px; }
+  .menu-btn { width: 32px; height: 32px; margin: -6px -6px 0 0; border-radius: 10px; display: grid; place-items: center; color: var(--faint); }
+  @media (hover: hover) and (pointer: fine) { .menu-btn:hover { background: var(--surface-2); color: var(--ink); } }
+  .confirm { position: absolute; inset: 0; border-radius: var(--radius); background: var(--surface); display: grid; place-content: center; gap: 12px; text-align: center; padding: 16px; }
+  .confirm p { margin: 0; font-weight: 600; }
+  .confirm div { display: flex; gap: 8px; justify-content: center; }
+  .pill-btn.danger { background: var(--down); color: #fff; }
+
+  /* Notizie */
+  .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-bottom: 12px; }
+  .chip { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-size: 13px; color: var(--muted); transition: transform 160ms var(--ease-out); }
+  .chip:active { transform: scale(0.97); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .feed { margin: 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .item { position: relative; padding: 16px 18px 16px 22px; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .item::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 0 3px 3px 0; background: var(--line); }
+  .item.su::before { background: var(--up); }
+  .item.giù::before { background: var(--down); }
+  .item.alert-item { background: linear-gradient(90deg, rgba(212,255,58,.16), transparent 60%); }
+  .item .k { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .tk { padding: 2px 7px; border-radius: 6px; background: var(--surface-2); color: var(--ink); font-weight: 700; }
+  .item .t { display: block; margin-top: 6px; font: 600 16px/1.35 var(--text); text-decoration: none; }
+  @media (hover: hover) and (pointer: fine) { .item .t:hover { text-decoration: underline; } }
+  .item .eff { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .eff .su { color: var(--up); font-weight: 700; } .eff .giù { color: var(--down); font-weight: 700; }
+  .mv { margin-top: 4px; font-size: 13px; color: var(--muted); }
+  .mv b.up { color: var(--up); } .mv b.down { color: var(--down); }
+  .item details { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .item summary { cursor: pointer; width: fit-content; list-style: none; font-weight: 600; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .item summary::-webkit-details-marker { display: none; }
+  .more { display: block; width: 100%; padding: 14px; border-top: 1px solid var(--line); font-weight: 700; font-size: 14px; }
+  .empty { padding: 28px 18px; text-align: center; color: var(--muted); }
+
+  /* Fonti e piè di pagina */
+  .sources { margin-top: 36px; font-size: 13px; color: var(--muted); }
+  .sources summary { cursor: pointer; font-weight: 600; width: fit-content; }
+  .sources ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+  .sources li { display: grid; grid-template-columns: 12px 1fr; gap: 0 8px; }
+  .sources .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--up); }
+  .sources .dot.ko { background: var(--down); }
+  .sources .why { grid-column: 2; color: var(--faint); }
+  footer { padding: 36px 0 calc(48px + env(safe-area-inset-bottom)); color: var(--faint); font-size: 12px; text-align: center; }
+
+  /* Finestra di collegamento a GitHub */
+  dialog { width: min(520px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); color: var(--ink); box-shadow: 0 30px 80px -20px rgba(0,0,0,.45); }
+  dialog::backdrop { background: rgba(10, 12, 11, 0.45); }
+  dialog[open] { animation: rise 200ms var(--ease-out); }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+  .dlg { padding: 22px; display: grid; gap: 14px; }
+  .dlg h3 { margin: 0; font: 700 22px var(--display); letter-spacing: -0.02em; }
+  .dlg p, .dlg ol { margin: 0; color: var(--muted); font-size: 14px; }
+  .dlg ol { padding-left: 20px; display: grid; gap: 6px; }
+  .dlg b { color: var(--ink); }
+  .dlg input { height: 46px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .dlg .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .dlg .msg { min-height: 20px; font-size: 13px; font-weight: 600; }
+  .dlg .msg.ok { color: var(--up); } .dlg .msg.err { color: var(--down); }
+
+  /* Avvisi */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 50; max-width: calc(100vw - 32px);
+    transform: translate(-50%, 0); padding: 12px 16px; border-radius: 14px; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px;
+    box-shadow: 0 12px 30px -10px rgba(0,0,0,.4); transition: opacity 200ms ease, transform 200ms var(--ease-out);
+  }
+  .toast[hidden] { display: block; opacity: 0; transform: translate(-50%, 12px); pointer-events: none; visibility: hidden; }
+
+  @media (max-width: 560px) {
+    .brand h1 { font-size: 26px; }
+    .brand .live { display: none; }
+    .live.mobile { display: inline-flex; margin-top: 6px; }
+    .sec-head { flex-direction: column; gap: 2px; }
+    /* Su telefono i titoli diventano righe, come nell'app Azioni: nome, grafico, prezzo. */
+    .grid { grid-template-columns: 1fr; gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .card {
+      min-height: 0; border: 0; border-radius: 0; box-shadow: none; border-top: 1px solid var(--line); padding: 12px 10px 12px 14px;
+      grid-template-columns: minmax(0, 1fr) 64px auto 28px; grid-template-rows: auto auto;
+      grid-template-areas: "id sp price act" "news news news news"; align-items: center; gap: 4px 10px;
+    }
+    .card:first-child { border-top: 0; }
+    .card .sym { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card .none .long { display: none; } .card .none .short { display: inline; }
+    .card .nm { max-width: none; font-size: 12px; }
+    .card .price { flex-direction: column; align-items: flex-end; gap: 4px; }
+    .card .price b { font-size: 17px; }
+    .card .price .cur, .card .chg .oggi { display: none; }
+    .card .chg { min-width: 66px; text-align: center; }
+    .card .act { align-self: center; }
+    .card .flag { display: none; }
+    .card.has-alert .sym::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--lime); vertical-align: 3px; box-shadow: 0 0 0 1px var(--lime-ink); }
+    .spark { height: 30px; }
+    .spark-empty { font-size: 0; height: 30px; }
+    .card .news { border-top: 0; padding-top: 0; font-size: 12px; }
+    .card.no-news .news { display: none; }
+    .card .news a { -webkit-line-clamp: 1; font-weight: 600; }
+    .card .news span { display: none; }
+    .card.pending { border-top: 1px solid var(--line); }
+  }
+  @media (min-width: 561px) { .live.mobile { display: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <h1>Radar</h1>
+        <span class="live" id="live"><i></i><span>Caricamento…</span></span>
+      </div>
+      <button class="icon-btn" id="settings-btn" aria-label="Collega GitHub per modificare i titoli" title="Collegamento a GitHub">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <span class="live mobile" id="live-m"><i></i><span></span></span>
+
+    <div class="search" role="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Cerca un titolo da seguire: Nvidia, AAPL, Leonardo…"
+             aria-label="Cerca un titolo" aria-controls="results" aria-expanded="false">
+      <ul class="results" id="results" role="listbox" hidden></ul>
+    </div>
+  </header>
+
+  <main>
+    <section aria-labelledby="h-alerts">
+      <div class="sec-head"><h2 id="h-alerts">Da guardare</h2><p>Notizie sui tuoi titoli che possono muovere il prezzo</p></div>
+      <div class="alerts" id="alerts"></div>
+    </section>
+
+    <section aria-labelledby="h-watch">
+      <div class="sec-head"><h2 id="h-watch">I tuoi titoli</h2><p id="watch-note"></p></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section aria-labelledby="h-news">
+      <div class="sec-head"><h2 id="h-news">Notizie</h2><p>Dalle più recenti</p></div>
+      <div class="chips" role="group" aria-label="Filtra le notizie">
+        <button class="chip" data-filter="important" aria-pressed="true">Importanti</button>
+        <button class="chip" data-filter="mine" aria-pressed="false">I miei titoli</button>
+        <button class="chip" data-filter="discover" aria-pressed="false">Titoli nuovi</button>
+        <button class="chip" data-filter="all" aria-pressed="false">Tutte</button>
+      </div>
+      <ul class="feed" id="feed"></ul>
+    </section>
+
+    <details class="sources" id="sources"><summary>Stato delle fonti</summary><ul></ul></details>
+  </main>
+
+  <footer>Il radar segnala, non consiglia: la decisione resta tua.<br>Prezzi da Nasdaq, CNBC o Yahoo, con possibile ritardo.</footer>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" method="dialog" id="dlg-form">
+    <h3>Collega GitHub</h3>
+    <p>Per aggiungere e togliere titoli dal sito, il sito deve poter modificare il file <b>watchlist.csv</b>. Serve un token creato da te, valido solo per questo progetto.</p>
+    <ol>
+      <li>Apri <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener"><b>Nuovo token</b></a> su GitHub.</li>
+      <li><b>Repository access</b>: <i>Only select repositories</i> → <b id="repo-name"></b>.</li>
+      <li><b>Permissions</b> → <b>Contents</b>: <i>Read and write</i>. Nient'altro.</li>
+      <li>Genera il token e incollalo qui sotto.</li>
+    </ol>
+    <input id="token" type="password" autocomplete="off" placeholder="github_pat_…" aria-label="Token GitHub">
+    <p>Resta solo in questo browser. Puoi revocarlo quando vuoi da GitHub.</p>
+    <div class="msg" id="dlg-msg" role="status"></div>
+    <div class="row">
+      <button class="pill-btn ghost" value="cancel" formnovalidate>Chiudi</button>
+      <button class="pill-btn ghost" type="button" id="forget">Scollega</button>
+      <button class="pill-btn" type="button" id="save-token">Salva e verifica</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+const CONFIG = {{ config | tojson }};
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+/* ---------- formati ---------- */
+const nf = (d) => new Intl.NumberFormat("it-IT", { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: "always" });
+function money(v) { if (v == null) return "–"; return nf(v >= 1000 ? 2 : v < 1 ? 4 : 2).format(v); }
+function pct(v) { if (v == null) return "–"; const s = v > 0 ? "+" : v < 0 ? "−" : ""; return s + nf(2).format(Math.abs(v)) + "%"; }
+function cls(v) { return v == null || v === 0 ? "flat" : v > 0 ? "up" : "down"; }
+const MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+function when(iso) {
+  if (!iso) return "";
+  const d = typeof iso === "number" ? new Date(iso * 1000) : new Date(iso);
+  const s = (Date.now() - d) / 1000;
+  if (s < 60) return "adesso";
+  if (s < 3600) return Math.floor(s / 60) + " min fa";
+  const hm = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const today = new Date(); const y = new Date(today); y.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "oggi " + hm;
+  if (d.toDateString() === y.toDateString()) return "ieri " + hm;
+  return d.getDate() + " " + MONTHS[d.getMonth()] + " " + hm;
+}
+const MARKET = { US: "USA", EU: "Europa", CA: "Canada" };
+
+/* ---------- stato ---------- */
+let DATA = null;
+let INDEX = null;           // [[ticker, nome, mercato], ...] caricato alla prima ricerca
+let filter = store.get("yspa_filter", "important");
+let showAll = false;
+const pending = () => store.get("yspa_pending", []);
+const removed = () => store.get("yspa_removed", []);
+
+/* ---------- dati ---------- */
+async function load() {
+  try {
+    const r = await fetch(CONFIG.data_url + "?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    DATA = await r.json();
+    reconcile();
+    render();
+  } catch (e) {
+    setLive("Dati non disponibili, riprovo tra poco", true);
+  }
+}
+function reconcile() {
+  // Le aggiunte compaiono quando il radar le ha lette; le rimozioni spariscono quando il radar le ha tolte.
+  const have = new Set(DATA.watchlist.map((w) => w.ticker));
+  const fresh = (x) => Date.now() - x.at < 30 * 60 * 1000;
+  store.set("yspa_pending", pending().filter((p) => !have.has(p.ticker) && fresh(p)));
+  store.set("yspa_removed", removed().filter((p) => have.has(p.ticker) && fresh(p)));
+}
+function setLive(text, stale) {
+  for (const el of [$("#live"), $("#live-m")]) { el.classList.toggle("stale", !!stale); el.lastElementChild.textContent = text; }
+}
+
+/* ---------- disegno ---------- */
+function render() {
+  const last = DATA.last_fetch;
+  const age = last ? (Date.now() - new Date(last)) / 60000 : Infinity;
+  setLive(last ? `Aggiornato ${when(last)} · controlla ${DATA.every}` : "In attesa del primo controllo", age > 20);
+  renderAlerts(); renderGrid(); renderFeed(); renderSources();
+}
+
+function renderAlerts() {
+  const alerts = DATA.news.filter((n) => n.is_alert && n.in_watchlist).slice(0, 4);
+  $("#alerts").innerHTML = alerts.length ? alerts.map((n) => `
+    <a class="alert" href="${esc(n.url)}" target="_blank" rel="noopener">
+      <span class="k">${n.tickers.map((t) => esc(t)).join(" · ")} <span>· ${esc(n.event)}</span></span>
+      <span class="t">${esc(n.title)}</span>
+      <span class="m">${esc(n.effect)} · ${esc(n.importance)} · ${esc(when(n.published_at))}${moveText(n)}</span>
+    </a>`).join("")
+    : `<div class="calm">Nessuna notizia sui tuoi titoli può muovere il prezzo adesso. Il radar continua a controllare.</div>`;
+}
+function moveText(n) {
+  if (!n.move || n.move.change_pct == null) return "";
+  const since = n.move.basis === "notizia" ? "dalla notizia" : "da quando il radar l'ha vista";
+  return ` · ${pct(n.move.change_pct)} ${since}`;
+}
+
+function spark(points, prev, dir) {
+  if (!points || points.length < 2) return `<div class="spark spark-empty">Il grafico di oggi si riempie a ogni controllo</div>`;
+  const ys = points.map((p) => p[1]).concat(prev != null ? [prev] : []);
+  const min = Math.min(...ys), max = Math.max(...ys), span = max - min || 1;
+  const t0 = points[0][0], t1 = points[points.length - 1][0], tspan = t1 - t0 || 1;
+  const X = (t) => ((t - t0) / tspan) * 120, Y = (v) => 40 - ((v - min) / span) * 36;
+  const d = points.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join(" ");
+  const color = dir === "down" ? "var(--down)" : dir === "up" ? "var(--up)" : "var(--muted)";
+  const base = prev != null ? `<line x1="0" x2="120" y1="${Y(prev).toFixed(1)}" y2="${Y(prev).toFixed(1)}" stroke="var(--faint)" stroke-dasharray="2 3" stroke-width="1" vector-effect="non-scaling-stroke"/>` : "";
+  return `<svg class="spark" viewBox="0 0 120 44" preserveAspectRatio="none" role="img" aria-label="Andamento di oggi">${base}<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function renderGrid() {
+  const gone = new Set(removed().map((r) => r.ticker));
+  const list = DATA.watchlist.filter((w) => !gone.has(w.ticker));
+  const waiting = pending().filter((p) => !list.some((w) => w.ticker === p.ticker));
+  $("#watch-note").textContent = `${list.length} titoli${waiting.length ? ` · ${waiting.length} in arrivo` : ""}`;
+  const cards = list.map((w) => {
+    const q = w.quote, dir = cls(q?.change_pct), n = w.news[0];
+    return `<article class="card ${n ? "" : "no-news"} ${w.alerts ? "has-alert" : ""}" data-ticker="${esc(w.ticker)}">
+      <div class="id"><div class="sym">${esc(w.ticker)}</div><div class="nm" title="${esc(w.name)}">${esc(w.name)} · ${esc(MARKET[w.market] || w.market)}</div></div>
+      <div class="act">
+        ${w.alerts ? `<span class="flag">${w.alerts} da guardare</span>` : ""}
+        <button class="menu-btn" data-remove="${esc(w.ticker)}" aria-label="Smetti di seguire ${esc(w.ticker)}" title="Smetti di seguire">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
+      </div>
+      ${q ? `<div class="price"><b class="num">${money(q.price)}</b><span class="cur">${esc(q.currency)}</span><span class="chg num ${dir}">${pct(q.change_pct)}<span class="oggi"> oggi</span></span></div>
+             <div class="sp">${spark(w.spark, q.prev_close, dir)}</div>`
+          : `<div class="price"><span class="none" title="Nessuna fonte ha il prezzo di questo titolo"><span class="long">Prezzo non disponibile</span><span class="short">n.d.</span></span></div><div class="sp">${spark([])}</div>`}
+      <div class="news">${n ? `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span>${esc(when(n.published_at))} · ${esc(n.source)}</span>`
+                           : `<span class="none">Nessuna notizia recente</span>`}</div>
+    </article>`;
+  });
+  const waits = waiting.map((p) => `<article class="card pending"><div class="id"><div class="sym">${esc(p.ticker)}</div><div class="nm">${esc(p.name)}</div></div>
+      <div class="wait">In arrivo: il radar lo aggiunge al prossimo giro, di solito entro 5 minuti.</div></article>`);
+  $("#grid").innerHTML = cards.concat(waits).join("") || `<div class="calm">Non segui ancora nessun titolo. Cercane uno qui sopra.</div>`;
+}
+
+function renderFeed() {
+  for (const c of document.querySelectorAll(".chip")) c.setAttribute("aria-pressed", c.dataset.filter === filter);
+  const pick = {
+    important: (n) => n.is_alert || n.score >= 5,
+    mine: (n) => n.in_watchlist,
+    discover: (n) => n.is_alert && !n.in_watchlist,
+    all: () => true,
+  }[filter];
+  const items = DATA.news.filter(pick).sort((a, b) => b.published_at.localeCompare(a.published_at));
+  const shown = showAll ? items : items.slice(0, 25);
+  const empty = { important: "Nessuna notizia importante per ora.", mine: "Nessuna notizia sui tuoi titoli per ora.",
+                  discover: "Nessun titolo nuovo con notizie forti (da 8 su 10 in su).", all: "Ancora nessuna notizia." }[filter];
+  $("#feed").innerHTML = shown.length ? shown.map((n) => `
+    <li class="item ${esc(n.direction)} ${n.is_alert ? "alert-item" : ""}">
+      <div class="k">${n.tickers.map((t) => `<span class="tk">${esc(t)}</span>`).join("")}<span>${esc(n.event)}</span></div>
+      <a class="t" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
+      <div class="eff"><span class="${esc(n.direction)}">${esc(n.effect)}</span> · ${esc(n.importance)}</div>
+      ${n.move && n.move.change_pct != null ? `<div class="mv">${n.move.basis === "notizia" ? "Dalla notizia" : "Da quando il radar l'ha vista"}: <b class="num ${cls(n.move.change_pct)}">${pct(n.move.change_pct)}</b> (${money(n.move.before)} → ${money(n.move.now)} ${esc(n.move.currency || "")})</div>` : ""}
+      <div class="mv">${esc(when(n.published_at))} · ${esc(n.source)}</div>
+      ${n.reason ? `<details><summary>Perché?</summary>${esc(n.reason)}</details>` : ""}
+    </li>`).join("") + (items.length > shown.length ? `<li><button class="more" id="more">Mostra altre ${items.length - shown.length}</button></li>` : "")
+    : `<li class="empty">${empty}</li>`;
+  $("#more")?.addEventListener("click", () => { showAll = true; renderFeed(); });
+}
+
+function renderSources() {
+  const el = $("#sources");
+  const bad = DATA.sources.filter((s) => !s.ok).length;
+  el.querySelector("summary").textContent = bad ? `Stato delle fonti · ${bad} ${bad === 1 ? "non risponde" : "non rispondono"}` : "Stato delle fonti · tutto ok";
+  el.querySelector("ul").innerHTML = DATA.sources.map((s) => `<li><span class="dot ${s.ok ? "" : "ko"}"></span>
+    <span>${esc(s.name)} · ${s.ok ? "ok, " + esc(when(s.checked_at)) : "non risponde"}</span>
+    ${s.message ? `<span class="why">${esc(s.message)}</span>` : ""}</li>`).join("");
+}
+
+/* ---------- ricerca ---------- */
+const EXCHANGES = [
+  ["", "USA"], [".MI", "Milano"], [".DE", "Francoforte"], [".PA", "Parigi"], [".AS", "Amsterdam"], [".BR", "Bruxelles"],
+  [".MC", "Madrid"], [".L", "Londra"], [".SW", "Zurigo"], [".CO", "Copenaghen"], [".ST", "Stoccolma"],
+  [".HE", "Helsinki"], [".OL", "Oslo"], [".LS", "Lisbona"], [".TO", "Toronto"],
+];
+let results = [], active = -1;
+async function ensureIndex() {
+  if (INDEX) return INDEX;
+  try { INDEX = await (await fetch(CONFIG.tickers_url, { cache: "force-cache" })).json(); } catch { INDEX = []; }
+  return INDEX;
+}
+function norm(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+async function search(q) {
+  const box = $("#results"), input = $("#q");
+  q = q.trim();
+  if (!q) { box.hidden = true; input.setAttribute("aria-expanded", "false"); return; }
+  const idx = await ensureIndex();
+  const nq = norm(q), up = q.toUpperCase();
+  const scored = [];
+  for (const row of idx) {
+    const [t, n] = row, nn = norm(n);
+    let s = t === up ? 0 : t.startsWith(up) ? 1 : nn.startsWith(nq) ? 2 : nn.includes(" " + nq) ? 3 : nn.includes(nq) ? 4 : -1;
+    if (s >= 0) scored.push([s, t.length, row]);
+    if (scored.length > 400) break;
+  }
+  scored.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  results = scored.slice(0, 8).map((x) => x[2]);
+  const following = new Set(DATA.watchlist.map((w) => w.ticker).concat(pending().map((p) => p.ticker)));
+  const symbolLike = /^[A-Za-z0-9.\-]{1,10}$/.test(q);
+  box.innerHTML = results.map(([t, n, m], i) => `
+    <li class="result" role="option" id="opt-${i}" data-i="${i}">
+      <span class="sym">${esc(t)}</span><span class="nm">${esc(n)}</span><span class="tag">${esc(MARKET[m] || m)}</span>
+      ${following.has(t) ? `<span class="following">Lo segui</span>` : `<button class="pill-btn" data-add="${i}">Segui</button>`}
+    </li>`).join("") + (symbolLike && !results.some((r) => r[0] === up || r[0].split(".")[0] === up) ? `
+    <li class="result custom">
+      <span class="lbl">Altro titolo: <b>${esc(up)}</b> su</span>
+      <select id="exch" aria-label="Borsa di ${esc(up)}">${EXCHANGES.map(([s, l]) => `<option value="${s}">${l}</option>`).join("")}</select>
+      <button class="pill-btn" data-custom="${esc(up)}">Segui</button>
+    </li>` : "") + (!results.length && !symbolLike ? `<li class="result"><span class="nm">Nessun risultato. Prova con la sigla in borsa, es. NVDA o LDO.</span></li>` : "");
+  box.hidden = false; input.setAttribute("aria-expanded", "true"); active = -1;
+}
+function highlight(i) {
+  const opts = [...document.querySelectorAll("#results .result[data-i]")];
+  opts.forEach((o, j) => o.classList.toggle("active", j === i));
+  if (opts[i]) { $("#q").setAttribute("aria-activedescendant", opts[i].id); opts[i].scrollIntoView({ block: "nearest" }); }
+}
+
+/* ---------- modifica della watchlist ---------- */
+function aliasOf(name) {
+  let a = name.trim();
+  for (let k = 0; k < 3; k++) a = a.replace(/[,\s]+(inc\.?|corp\.?|corporation|co\.?|company|ltd\.?|limited|plc|n\.?v\.?|s\.?p\.?a\.?|se|ag|sa|holdings?|group|class [a-z]|\/[a-z]{2})$/i, "").trim();
+  return a || name;
+}
+const csvField = (s) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+function marketOf(t) { return !t.includes(".") ? "US" : t.endsWith(".TO") || t.endsWith(".V") ? "CA" : "EU"; }
+function firstField(line) { const m = line.match(/^\s*(?:"([^"]*)"|([^,]*))/); return ((m && (m[1] ?? m[2])) || "").trim().toUpperCase(); }
+
+const token = () => store.get("yspa_token", "");
+async function gh(path, opts = {}) {
+  const r = await fetch("https://api.github.com" + path, {
+    ...opts,
+    headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + token(), "X-GitHub-Api-Version": "2022-11-28", ...(opts.headers || {}) },
+  });
+  if (r.status === 401) throw new Error("Il token non è valido o è scaduto: ricollegalo dalla rotellina in alto.");
+  if (r.status === 403 || r.status === 404) throw new Error("Il token non ha il permesso di modificare questo progetto (Contents: Read and write).");
+  return r;
+}
+const b64decode = (b) => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g, "")), (c) => c.charCodeAt(0)));
+const b64encode = (s) => { const bytes = new TextEncoder().encode(s); let bin = ""; bytes.forEach((b) => (bin += String.fromCharCode(b))); return btoa(bin); };
+
+async function editWatchlist(change, message) {
+  if (CONFIG.mode === "server") {
+    const r = await fetch(change.url, { method: change.method, headers: { "Content-Type": "application/json" }, body: change.body && JSON.stringify(change.body) });
+    if (!r.ok) throw new Error("Il server non ha accettato la modifica (" + r.status + ").");
+    return;
+  }
+  const path = `/repos/${CONFIG.repo}/contents/watchlist.csv`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const file = await (await gh(`${path}?ref=${encodeURIComponent(CONFIG.branch)}`)).json();
+    const text = b64decode(file.content);
+    const next = change.csv(text);
+    if (next === text) return;
+    const r = await gh(path, { method: "PUT", body: JSON.stringify({ message, content: b64encode(next), sha: file.sha, branch: CONFIG.branch }) });
+    if (r.ok) return;
+    if (r.status !== 409) throw new Error("GitHub non ha accettato la modifica (" + r.status + ").");
+  }
+  throw new Error("Il file è cambiato nel frattempo: riprova.");
+}
+
+async function follow(ticker, name) {
+  if (CONFIG.mode !== "server" && !token()) { openSettings(`Per seguire ${ticker} collega prima GitHub.`); return; }
+  const market = marketOf(ticker);
+  const line = [ticker, name, market, aliasOf(name)].map(csvField).join(",");
+  toast(`Aggiungo ${ticker}…`);
+  try {
+    await editWatchlist({
+      url: CONFIG.api + "/watchlist", method: "POST", body: { ticker, name, market, aliases: aliasOf(name) },
+      csv: (text) => text.split("\n").some((l) => firstField(l) === ticker) ? text : text.replace(/\n*$/, "\n") + line + "\n",
+    }, `Watchlist: segui ${ticker}`);
+    store.set("yspa_pending", pending().filter((p) => p.ticker !== ticker).concat([{ ticker, name, at: Date.now() }]));
+    $("#q").value = ""; $("#results").hidden = true;
+    renderGrid();
+    toast(CONFIG.mode === "server" ? `${ticker} aggiunto.` : `${ticker} aggiunto. Il radar lo segue dal prossimo giro.`);
+    if (CONFIG.mode === "server") load();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function unfollow(ticker) {
+  if (CONFIG.mode !== "server" && !token()) { openSettings(`Per smettere di seguire ${ticker} collega prima GitHub.`); return; }
+  try {
+    await editWatchlist({
+      url: CONFIG.api + "/watchlist/" + encodeURIComponent(ticker), method: "DELETE",
+      csv: (text) => text.split("\n").filter((l) => l.trim().startsWith("#") || firstField(l) !== ticker).join("\n"),
+    }, `Watchlist: smetti di seguire ${ticker}`);
+    store.set("yspa_removed", removed().concat([{ ticker, at: Date.now() }]));
+    renderGrid();
+    toast(`${ticker} rimosso.`);
+    if (CONFIG.mode === "server") load();
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- collegamento a GitHub ---------- */
+function openSettings(msg) {
+  if (CONFIG.mode === "server") { toast("Su questo server i titoli si modificano senza collegamento."); return; }
+  $("#repo-name").textContent = CONFIG.repo;
+  $("#token").value = token();
+  const m = $("#dlg-msg"); m.className = "msg"; m.textContent = msg || (token() ? "Collegato. Puoi aggiungere e togliere titoli." : "");
+  $("#dlg").showModal();
+}
+async function saveToken() {
+  const m = $("#dlg-msg"), value = $("#token").value.trim();
+  if (!value) { m.className = "msg err"; m.textContent = "Incolla il token."; return; }
+  store.set("yspa_token", value);
+  m.className = "msg"; m.textContent = "Verifico…";
+  try {
+    const r = await gh(`/repos/${CONFIG.repo}/contents/watchlist.csv?ref=${encodeURIComponent(CONFIG.branch)}`);
+    if (!r.ok) throw new Error("GitHub ha risposto " + r.status + ".");
+    m.className = "msg ok"; m.textContent = "Collegato. Ora puoi seguire titoli dalla ricerca.";
+  } catch (e) { store.del("yspa_token"); m.className = "msg err"; m.textContent = e.message; }
+}
+
+/* ---------- avvisi ---------- */
+let toastTimer;
+function toast(text, error) {
+  const t = $("#toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), error ? 6000 : 3500);
+}
+
+/* ---------- eventi ---------- */
+let debounce;
+$("#q").addEventListener("input", (e) => { clearTimeout(debounce); debounce = setTimeout(() => search(e.target.value), 120); });
+$("#q").addEventListener("focus", () => { ensureIndex(); if ($("#q").value.trim()) search($("#q").value); });
+$("#q").addEventListener("keydown", (e) => {
+  const n = results.length;
+  if (e.key === "ArrowDown" && n) { e.preventDefault(); active = (active + 1) % n; highlight(active); }
+  else if (e.key === "ArrowUp" && n) { e.preventDefault(); active = (active - 1 + n) % n; highlight(active); }
+  else if (e.key === "Enter" && active >= 0 && results[active]) { e.preventDefault(); follow(results[active][0], results[active][1]); }
+  else if (e.key === "Escape") { $("#results").hidden = true; }
+});
+document.addEventListener("click", (e) => {
+  const add = e.target.closest("[data-add]");
+  if (add) { const [t, n] = results[+add.dataset.add]; follow(t, n); return; }
+  const custom = e.target.closest("[data-custom]");
+  if (custom) { const base = custom.dataset.custom; follow(base + ($("#exch")?.value || ""), base); return; }
+  if (!e.target.closest(".search")) $("#results").hidden = true;
+  const rm = e.target.closest("[data-remove]");
+  if (rm) {
+    const card = rm.closest(".card"), t = rm.dataset.remove;
+    card.insertAdjacentHTML("beforeend", `<div class="confirm"><p>Smetti di seguire ${esc(t)}?</p><div>
+      <button class="pill-btn ghost" data-cancel>Annulla</button><button class="pill-btn danger" data-confirm="${esc(t)}">Rimuovi</button></div></div>`);
+    return;
+  }
+  if (e.target.closest("[data-cancel]")) { e.target.closest(".confirm").remove(); return; }
+  const ok = e.target.closest("[data-confirm]");
+  if (ok) { unfollow(ok.dataset.confirm); return; }
+  const chip = e.target.closest(".chip");
+  if (chip) { filter = chip.dataset.filter; showAll = false; store.set("yspa_filter", filter); renderFeed(); }
+});
+$("#settings-btn").addEventListener("click", () => openSettings());
+$("#save-token").addEventListener("click", saveToken);
+$("#forget").addEventListener("click", () => { store.del("yspa_token"); $("#token").value = ""; const m = $("#dlg-msg"); m.className = "msg"; m.textContent = "Scollegato."; });
+
+load();
+setInterval(load, 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>

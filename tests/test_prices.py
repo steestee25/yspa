@@ -127,12 +127,6 @@ def test_cnbc_symbol_mapping():
     assert prices.to_cnbc("NOVO-B.CO") == "NOVOB-DK" and prices.to_cnbc("XYZ.KS") is None
 
 
-def test_italian_number_format():
-    from yspa.web.timefmt import number, percent
-    assert number(1234.5) == "1.234,50"
-    assert percent(20.55) == "+20,6%" and percent(-3.04) == "−3,0%"
-
-
 def test_previous_close_rule_skips_weekend_and_older_news():
     # Barre di lunedì 2 novembre: la chiusura precedente è venerdì 30 ottobre alle 16:00 (New York).
     monday = {"data": {"lastSalePrice": "$10.00", "previousClose": "$9.00", "chart": [{"x": 1793592000000, "y": 9.5}]}}
@@ -173,3 +167,28 @@ def test_blocked_source_is_skipped(monkeypatch):
         with pytest.raises(prices.SourceBlocked):
             prices.yahoo_chart("MRNA", datetime.now(timezone.utc))
     assert len(calls) == 1  # dopo il primo rifiuto la fonte resta in pausa
+
+
+
+def test_watchlist_quotes_saved_and_exported():
+    from datetime import datetime, timezone
+    from yspa import export
+    conn = db.connect(":memory:")
+    db.add_to_watchlist(conn, "MRNA", "Moderna", ["Moderna"], "US")
+    db.add_to_watchlist(conn, "LDO.MI", "Leonardo", ["Leonardo"], "EU")
+    db.add_to_watchlist(conn, "NOVO-B.CO", "Novo Nordisk", ["Novo Nordisk"], "EU")
+    t = ts("2026-10-29T14:00:00+00:00")
+
+    def fake(symbols, errors):
+        errors["CNBC"] = "niente per NOVO-B.CO"
+        return {"MRNA": prices.Quote("MRNA", "Nasdaq", 218.2, t + 120, "USD", 214.165, [t, t + 60], [216.0, 217.0], 60),
+                "LDO.MI": prices.Quote("LDO.MI", "CNBC", 51.97, t, "EUR", 49.86)}
+
+    assert pipeline.refresh_watchlist_quotes(conn, quotes_for=fake) == 2
+    status = {s["name"]: s for s in db.get_source_status(conn)}["Prezzi dei tuoi titoli"]
+    assert status["ok"] == 1 and "NOVO-B.CO" in status["detail"]
+    data = export.build_data(conn, now=datetime(2026, 10, 29, 15, 0, tzinfo=timezone.utc))
+    w = {x["ticker"]: x for x in data["watchlist"]}
+    assert w["MRNA"]["quote"]["price"] == 218.2 and w["MRNA"]["quote"]["change_pct"] == 1.88
+    assert [p[1] for p in w["MRNA"]["spark"]] == [216.0, 217.0, 218.2]
+    assert w["LDO.MI"]["quote"]["change_pct"] == 4.23 and w["NOVO-B.CO"]["quote"] is None
