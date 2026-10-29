@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [claude/wonderful-franklin-ay2r0p]
-    paths: ["yspa/**", ".github/workflows/radar.yml"]
+    paths: ["yspa/**", "tests/**", "requirements*.txt", "Dockerfile", "docker-compose.yml", ".github/workflows/radar.yml"]
 
 jobs:
-  fetch:
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -15,17 +15,46 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
-      - name: Un giro di raccolta
-        env:
-          # Impostabile come secret del repository; la SEC chiede nome ed email.
-          YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT || 'YSPA radar 223326988+steestee25@users.noreply.github.com' }}
-          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
-        run: python -m yspa fetch --report
-      - name: Prezzi sui casi reali
+
+  live:
+    # Prova dal vivo: fonti vere, prezzi veri, per qualche minuto.
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      YSPA_SEC_USER_AGENT: ${{ secrets.YSPA_SEC_USER_AGENT || 'YSPA radar 223326988+steestee25@users.noreply.github.com' }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Prezzi in tempo reale della watchlist
+        run: python -m yspa quotes
+      - name: Copertura dei prezzi su altre borse europee e Canada
+        run: python -m yspa quotes MC.PA SHEL.L NESN.SW SAN.MC NOKIA.HE EQNR.OL EDP.LS SHOP.TO VOLV-B.ST ENI.MI SAP.DE
+      - name: Raccolta continua (8 giri, uno al minuto)
+        run: python -m yspa run --every 60 --cycles 8 --report
+      - name: Notizie salvate (voto da 3 in su)
+        run: python -m yspa export | python -c "import sys, json; [print(l, end='') for l in sys.stdin if json.loads(l)['score'] >= 3]"
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build e avvio con docker compose
         run: |
-          python -m yspa price MRNA --since 2026-08-19T12:00:00+00:00  # prima dell'apertura del 19/08
-          python -m yspa price BSP  --since 2026-10-14T11:00:00+00:00  # prima dell'apertura del 14/10
-          python -m yspa price SPCX --since 2026-10-20T20:05:00+00:00  # dopo la chiusura del 20/10
-          python -m yspa price RHM.DE --since 2026-10-20T08:00:00+00:00  # verifica fonte europea
+          cp .env.example .env
+          docker compose up -d --build
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 2; done
+          echo
+          curl -sf -o /dev/null -w "pagina: HTTP %{http_code}\n" http://localhost:8000/
+          sleep 20
+          docker compose ps
+          docker compose logs --tail 20 radar
+          docker compose down

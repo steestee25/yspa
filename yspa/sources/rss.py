@@ -26,11 +26,20 @@ def parse_feed(name: str, xml: str) -> list[dict]:
     return items
 
 
+def fetch_one(name: str) -> list[dict]:
+    response = http_get(config.RSS_FEEDS[name])
+    items = parse_feed(name, response.text)
+    # Alcuni siti rispondono 200 con una pagina di errore o un feed disattivato: non è un successo.
+    if not items:
+        raise RuntimeError(f"risposta senza notizie ({response.text[:80]!r})")
+    return items
+
+
 def fetch() -> list[dict]:
     items = []
-    for name, url in config.RSS_FEEDS.items():
+    for name in config.RSS_FEEDS:
         try:
-            items.extend(parse_feed(name, http_get(url).text))
+            items.extend(fetch_one(name))
         except Exception as exc:  # un feed fermo non deve bloccare gli altri
             log.warning("Feed %s non disponibile: %s", name, exc)
     return items

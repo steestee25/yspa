@@ -9,6 +9,9 @@ SEC_USER_AGENT = os.environ.get("YSPA_SEC_USER_AGENT", "")
 
 FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "")
 
+# Se impostata, la pagina web chiede questa password (utente qualsiasi). Necessaria se la pagina è raggiungibile da internet.
+WEB_PASSWORD = os.environ.get("YSPA_PASSWORD", "")
+
 # Fuso orario in cui mostrare gli orari delle notizie.
 TIMEZONE = os.environ.get("YSPA_TIMEZONE", "Europe/Rome")
 
@@ -35,6 +38,10 @@ LOW_SCORE = 3
 # Prezzi: per quali notizie aggiornarli a ogni giro.
 PRICE_MIN_SCORE = 5
 PRICE_MAX_AGE_DAYS = 5
+PRICE_REFRESH_MINUTES = 5   # ogni notizia si riprezza al massimo ogni 5 minuti
+
+# Pulizia: le notizie poco importanti più vecchie di così si cancellano (segnalazioni e risposte restano).
+KEEP_DAYS = 30
 
 # Watchlist iniziale: ticker, nome, alias usati per riconoscerlo nel testo, mercato.
 DEFAULT_WATCHLIST = [

@@ -120,7 +120,16 @@
   .fields .wide { grid-column: 1 / -1; }
   .add .submit { margin-top: 20px; }
 
-  footer { padding: 96px 0 48px; font-size: 12px; color: var(--faint); text-align: center; }
+  .sources { margin-top: 96px; font-size: 13px; color: var(--muted); }
+  .sources h2 { margin: 0 0 8px; font-size: 13px; font-weight: 400; }
+  .sources ul { margin: 0; padding: 0; list-style: none; }
+  .sources li { padding: 6px 0; border-top: 1px solid var(--line); }
+  .sources .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+  .sources .dot.ok { background: var(--up); }
+  .sources .dot.ko { background: var(--down); }
+  .sources .when { color: var(--faint); margin-left: 6px; }
+  .sources .detail { display: block; margin: 2px 0 0 15px; color: var(--faint); overflow-wrap: anywhere; }
+  footer { padding: 48px 0 48px; font-size: 12px; color: var(--faint); text-align: center; }
 
   @media (max-width: 480px) {
     header { padding-top: max(32px, env(safe-area-inset-top)); }
@@ -144,9 +153,9 @@
   </div>
   {% if n.change_pct is not none %}
   <div class="price">
-    Da quando è uscita la notizia:
+    {% if n.price_basis == "notizia" %}Da quando è uscita la notizia:{% else %}Da quando il radar l'ha vista ({{ n.price_before_time | when }}):{% endif %}
     <span class="pct {{ 'up' if n.change_pct > 0 else 'down' if n.change_pct < 0 else '' }}">{{ n.change_pct | pct }}</span>
-    ({{ n.price_before | num }} → {{ n.price_now | num }} {{ n.currency }})
+    ({{ n.price_before | num }} → {{ n.price_now | num }} {{ n.currency }}{% if n.day_change_pct is not none %} · oggi {{ n.day_change_pct | pct }}{% endif %})
   </div>
   {% endif %}
   <div class="meta">{{ n.published_at | when }} · {{ n.source | source }}</div>
@@ -249,7 +258,21 @@
   {% endif %}
   </main>
 
-  <footer>Il radar segnala, non consiglia: la decisione resta tua.<br>Prezzi da Yahoo Finance, anche con 15 minuti di ritardo.</footer>
+  {% if sources %}
+  <section class="sources" aria-label="Stato delle fonti">
+    <h2>Fonti</h2>
+    <ul>
+      {% for s in sources %}
+      <li><span class="dot {{ 'ok' if s.ok else 'ko' }}" aria-hidden="true"></span>{{ s.name }}
+        <span class="when">{% if s.ok %}ok, {{ s.checked_at | when }}{% else %}non risponde{% if s.last_ok_at %} (ultima volta {{ s.last_ok_at | when }}){% endif %}{% endif %}</span>
+        {% if not s.ok and s.detail %}<span class="detail">{{ s.detail }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <footer>Il radar segnala, non consiglia: la decisione resta tua.<br>Prezzi da Yahoo, Nasdaq o CNBC, con possibile ritardo di qualche minuto.</footer>
 </div>
 
 <script>

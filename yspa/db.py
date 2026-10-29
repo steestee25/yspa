@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS news (
     feedback      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC);
+CREATE TABLE IF NOT EXISTS source_status (
+    name        TEXT PRIMARY KEY,
+    ok          INTEGER NOT NULL,
+    detail      TEXT NOT NULL DEFAULT '',
+    items       INTEGER NOT NULL DEFAULT 0,
+    checked_at  TEXT NOT NULL,
+    last_ok_at  TEXT
+);
 """
 
 # Colonne aggiunte dopo la prima versione: si aggiungono ai database già esistenti.
@@ -42,6 +50,11 @@ PRICE_COLUMNS = {
     "change_pct": "REAL",
     "currency": "TEXT",
     "price_time": "TEXT",
+    "price_basis": "TEXT",       # "notizia" (prezzo prima della notizia) o "rilevamento" (prezzo al primo controllo)
+    "price_before_time": "TEXT",
+    "price_source": "TEXT",
+    "price_checked_at": "TEXT",
+    "day_change_pct": "REAL",    # variazione di oggi rispetto alla chiusura precedente
 }
 
 
@@ -50,11 +63,15 @@ def now_iso() -> str:
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
+    """Apre il database. Raccolta e pagina web sono processi diversi che scrivono sullo stesso file:
+    WAL permette di leggere mentre l'altro scrive, busy_timeout aspetta invece di fallire subito."""
     path = path or config.DB_PATH
     if str(path) != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, check_same_thread=False)
+    conn = sqlite3.connect(path, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.executescript(SCHEMA)
     existing = {row["name"] for row in conn.execute("PRAGMA table_info(news)")}
     for column, kind in PRICE_COLUMNS.items():
@@ -88,6 +105,16 @@ def remove_from_watchlist(conn, ticker: str) -> None:
 def get_watchlist(conn) -> list[dict]:
     rows = conn.execute("SELECT * FROM watchlist ORDER BY ticker").fetchall()
     return [{**dict(r), "aliases": json.loads(r["aliases"])} for r in rows]
+
+
+def known_uids(conn, uids: list[str]) -> set[str]:
+    """Quali notizie sono già nel database: non serve rianalizzarle a ogni giro."""
+    known: set[str] = set()
+    for i in range(0, len(uids), 500):
+        chunk = uids[i:i + 500]
+        rows = conn.execute(f"SELECT uid FROM news WHERE uid IN ({','.join('?' * len(chunk))})", chunk)
+        known.update(r["uid"] for r in rows)
+    return known
 
 
 def insert_news(conn, item: dict) -> bool:
@@ -150,25 +177,66 @@ def near_alerts(conn, limit: int = 5) -> list[dict]:
 
 
 def last_fetch(conn) -> str | None:
-    return conn.execute("SELECT MAX(fetched_at) FROM news").fetchone()[0]
+    """Ora dell'ultimo giro di raccolta, anche se non ha trovato notizie nuove."""
+    row = conn.execute("SELECT MAX(checked_at) FROM source_status").fetchone()[0]
+    return row or conn.execute("SELECT MAX(fetched_at) FROM news").fetchone()[0]
 
 
-def news_needing_prices(conn, min_score: int, max_age_days: int) -> list[dict]:
-    """Notizie con ticker abbastanza importanti e recenti da meritare il prezzo aggiornato."""
-    since = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat(timespec="seconds")
+def set_source_status(conn, name: str, ok: bool, detail: str = "", items: int = 0) -> None:
+    now = now_iso()
+    conn.execute(
+        """INSERT INTO source_status (name, ok, detail, items, checked_at, last_ok_at)
+           VALUES (:name, :ok, :detail, :items, :now, CASE WHEN :ok THEN :now END)
+           ON CONFLICT(name) DO UPDATE SET ok = :ok, detail = :detail, items = :items, checked_at = :now,
+               last_ok_at = CASE WHEN :ok THEN :now ELSE last_ok_at END""",
+        {"name": name, "ok": int(ok), "detail": detail[:300], "items": items, "now": now},
+    )
+    conn.commit()
+
+
+def get_source_status(conn) -> list[dict]:
+    return [dict(r) for r in conn.execute("SELECT * FROM source_status ORDER BY name")]
+
+
+def purge_old(conn, keep_days: int, low_score: int) -> int:
+    """Toglie le notizie poco importanti più vecchie di keep_days, tenendo segnalazioni e risposte."""
+    since = (datetime.now(timezone.utc) - timedelta(days=keep_days)).isoformat(timespec="seconds")
+    cur = conn.execute(
+        "DELETE FROM news WHERE published_at < ? AND score < ? AND is_alert = 0 AND feedback IS NULL",
+        (since, low_score),
+    )
+    conn.commit()
+    return cur.rowcount
+
+
+def news_needing_prices(conn, min_score: int, max_age_days: int, refresh_minutes: int) -> list[dict]:
+    """Notizie da aggiornare: segnalazioni o titoli seguiti, recenti, non controllate da poco.
+
+    Solo queste, per non chiedere centinaia di prezzi al minuto e farsi bloccare dalle fonti."""
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=max_age_days)).isoformat(timespec="seconds")
+    stale = (now - timedelta(minutes=refresh_minutes)).isoformat(timespec="seconds")
     rows = conn.execute(
-        "SELECT * FROM news WHERE tickers != '[]' AND (score >= ? OR is_alert = 1) AND published_at >= ?",
-        (min_score, since),
+        """SELECT * FROM news WHERE tickers != '[]' AND (is_alert = 1 OR (in_watchlist = 1 AND score >= ?))
+           AND published_at >= ? AND (price_checked_at IS NULL OR price_checked_at < ?)""",
+        (min_score, since, stale),
     ).fetchall()
     return [{**dict(r), "tickers": json.loads(r["tickers"])} for r in rows]
 
 
-def set_prices(conn, news_id: int, move: dict) -> None:
-    conn.execute(
-        """UPDATE news SET price_before = :price_before, price_now = :price_now, change_pct = :change_pct,
-                           currency = :currency, price_time = :price_time WHERE id = :id""",
-        {**move, "id": news_id},
-    )
+def set_prices(conn, news_id: int, move: dict | None) -> None:
+    """Salva i prezzi; con move=None segna solo che il controllo è avvenuto (fonte non disponibile)."""
+    if move is None:
+        conn.execute("UPDATE news SET price_checked_at = ? WHERE id = ?", (now_iso(), news_id))
+    else:
+        conn.execute(
+            """UPDATE news SET price_before = :price_before, price_now = :price_now, change_pct = :change_pct,
+                               currency = :currency, price_time = :price_time, price_basis = :price_basis,
+                               price_source = :price_source, day_change_pct = :day_change_pct,
+                               price_before_time = :price_before_time,
+                               price_checked_at = :checked WHERE id = :id""",
+            {"day_change_pct": None, "price_before_time": None, **move, "checked": now_iso(), "id": news_id},
+        )
     conn.commit()
 
 

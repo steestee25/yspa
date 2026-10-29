@@ -1,7 +1,7 @@
 {
   "name": "YSPA radar",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "postCreateCommand": "pip install -r requirements.txt",
+  "postCreateCommand": "pip install -r requirements-dev.txt",
   "postAttachCommand": "bash scripts/start.sh",
   "forwardPorts": [8000],
   "portsAttributes": {

@@ -101,10 +101,14 @@ def test_web_pages(tmp_path, monkeypatch):
     client = TestClient(web.app)
     assert "Bending Spoons" in client.get("/?view=watchlist").text
     client.post("/watchlist", data={"ticker": "pltr", "name": "Palantir", "market": "US"})
-    assert any(w["ticker"] == "PLTR" for w in db.get_watchlist(web.conn))
+    conn = db.connect(tmp_path / "web.db")
+    assert any(w["ticker"] == "PLTR" for w in db.get_watchlist(conn))
     client.post("/watchlist/PLTR/delete")
-    assert not any(w["ticker"] == "PLTR" for w in db.get_watchlist(web.conn))
+    assert not any(w["ticker"] == "PLTR" for w in db.get_watchlist(conn))
     assert client.get("/api/news").json() == []
+    assert client.get("/health").json()["ok"] is False  # nessuna fonte controllata ancora
+    for view in ("alerts", "discover", "all", "watchlist"):
+        assert client.get(f"/?view={view}").status_code == 200
 
 
 def test_ticker_from_full_page_when_feed_is_truncated(conn):
@@ -181,3 +185,43 @@ def test_purge_removes_old_sec_noise(conn):
     db.insert_news(conn, pipeline.enrich(sec_raw("8-K", ["8.01"]), wl, page_reader=lambda u: ""))
     db.purge_sec_noise(conn, 6)
     assert db.list_news(conn, "all") == []
+
+
+
+def test_web_password(tmp_path, monkeypatch):
+    monkeypatch.setattr("yspa.config.DB_PATH", tmp_path / "web.db")
+    monkeypatch.setattr("yspa.config.WEB_PASSWORD", "segreta")
+    from fastapi.testclient import TestClient
+    import importlib
+    import yspa.web.app as web
+    importlib.reload(web)
+    client = TestClient(web.app)
+    assert client.get("/").status_code == 401
+    assert client.get("/", auth=("io", "sbagliata")).status_code == 401
+    assert client.get("/", auth=("io", "segreta")).status_code == 200
+    assert client.get("/health").status_code == 200
+
+
+def test_exchange_suffixes_and_alias_only_in_title(conn):
+    wl = db.get_watchlist(conn)
+    text = "Acme (Euronext Paris: ACM) and Beta (TSX: BTA; NYSE American: BTA) sign deal. Body mentions Nike shoes."
+    tickers, in_wl = find_tickers(text, wl, title="Acme and Beta sign deal")
+    assert tickers == ["ACM.PA", "BTA.TO", "BTA"] and not in_wl
+    assert find_tickers("Foot Locker results", wl, title="Foot Locker results")[0] == []
+    assert find_tickers("x", wl, title="Nike raises guidance")[0] == ["NKE"]
+    assert find_tickers("argenx (Euronext Brussels: ARGX) news", wl, title="x")[0] == ["ARGX.BR"]
+
+
+def test_known_news_is_not_reanalysed(conn, monkeypatch):
+    raw = rss.parse_feed("wire", (FIXTURES / "wire.rss").read_text())
+    monkeypatch.setattr(pipeline, "collect", lambda c, w: raw)
+    monkeypatch.setattr(pipeline, "update_prices", lambda c: 0)
+    pages = []
+    monkeypatch.setattr(pipeline, "tickers_from_page", lambda url: pages.append(url) or "")
+    calls = []
+    real_enrich = pipeline.enrich
+    monkeypatch.setattr(pipeline, "enrich", lambda r, w: calls.append(r["uid"]) or real_enrich(r, w, page_reader=lambda u: ""))
+    pipeline.run_once(conn)
+    first = len(calls)
+    pipeline.run_once(conn)
+    assert first == 4 and len(calls) == 4
