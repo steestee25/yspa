@@ -16,12 +16,12 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from .sources.common import http_get
+from .sources.common import BROWSER_UA, http_get
 
 log = logging.getLogger(__name__)
 
 # Le fonti di prezzo rifiutano le richieste senza un User-Agent da browser.
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+USER_AGENT = BROWSER_UA
 YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 NASDAQ_URL = "https://api.nasdaq.com/api/quote/{symbol}/chart"
 CNBC_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"

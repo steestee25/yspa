@@ -139,3 +139,37 @@ def test_previous_close_rule_skips_weekend_and_older_news():
     quote = prices.parse_nasdaq("ABC", monday)
     assert prices.move_since(quote, "2026-10-31T12:00:00+00:00")["price_before"] == 9.0      # sabato
     assert prices.move_since(quote, "2026-10-30T19:00:00+00:00")["price_basis"] == "rilevamento"  # venerdì prima della chiusura
+
+
+def test_nasdaq_request_sends_json_accept_header(monkeypatch):
+    seen = {}
+
+    class FakeResponse:
+        def json(self):
+            return {"data": {"lastSalePrice": "$10.00", "previousClose": "$9.00", "chart": []}}
+
+    def fake_get(url, user_agent, params=None, headers=None):
+        seen.update(url=url, params=params, headers=headers)
+        return FakeResponse()
+
+    monkeypatch.setattr(prices, "http_get", fake_get)
+    monkeypatch.setattr(prices, "_blocked_until", {})
+    quote = prices.nasdaq_chart("MRNA")
+    assert quote.last == 10.0 and seen["headers"] == {"Accept": "application/json"}
+    assert seen["url"].endswith("/MRNA/chart") and seen["params"] == {"assetclass": "stocks"}
+
+
+def test_blocked_source_is_skipped(monkeypatch):
+    import httpx
+    calls = []
+
+    def refuse(url, user_agent, params=None, headers=None):
+        calls.append(url)
+        raise httpx.HTTPStatusError("429", request=httpx.Request("GET", url), response=httpx.Response(429))
+
+    monkeypatch.setattr(prices, "http_get", refuse)
+    monkeypatch.setattr(prices, "_blocked_until", {})
+    for _ in range(3):
+        with pytest.raises(prices.SourceBlocked):
+            prices.yahoo_chart("MRNA", datetime.now(timezone.utc))
+    assert len(calls) == 1  # dopo il primo rifiuto la fonte resta in pausa
