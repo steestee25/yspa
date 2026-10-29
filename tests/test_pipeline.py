@@ -225,3 +225,9 @@ def test_known_news_is_not_reanalysed(conn, monkeypatch):
     first = len(calls)
     pipeline.run_once(conn)
     assert first == 4 and len(calls) == 4
+
+
+def test_source_errors_in_plain_words():
+    from yspa.web.labels import source_error
+    assert "nome ed email" in source_error("RuntimeError: Imposta YSPA_SEC_USER_AGENT (es. ...)")
+    assert "403" in source_error("HTTPStatusError: Client error '403 Forbidden' for url 'https://www.sec.gov/'")

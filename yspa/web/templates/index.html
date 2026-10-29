@@ -265,7 +265,7 @@
       {% for s in sources %}
       <li><span class="dot {{ 'ok' if s.ok else 'ko' }}" aria-hidden="true"></span>{{ s.name }}
         <span class="when">{% if s.ok %}ok, {{ s.checked_at | when }}{% else %}non risponde{% if s.last_ok_at %} (ultima volta {{ s.last_ok_at | when }}){% endif %}{% endif %}</span>
-        {% if not s.ok and s.detail %}<span class="detail">{{ s.detail }}</span>{% endif %}
+        {% if not s.ok and s.detail %}<span class="detail" title="{{ s.detail }}">{{ s.detail | source_error }}</span>{% endif %}
       </li>
       {% endfor %}
     </ul>

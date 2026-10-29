@@ -45,3 +45,20 @@ def reason(text: str) -> str:
     if text.startswith("SEC "):
         return f"È un modulo {text[4:]} depositato alla SEC."
     return text
+
+
+def source_error(detail: str) -> str:
+    """L'errore tecnico di una fonte, detto in parole semplici."""
+    if "YSPA_SEC_USER_AGENT" in detail:
+        return "Manca il tuo nome ed email per la SEC (impostazione YSPA_SEC_USER_AGENT)."
+    if "403" in detail:
+        return "Rifiuta le richieste da questo computer (errore 403): succede spesso dai server cloud."
+    if "429" in detail:
+        return "Ha ricevuto troppe richieste da questo computer (errore 429): il radar riprova più tardi."
+    if "in pausa" in detail:
+        return "In pausa dopo un rifiuto: il radar riprova tra qualche minuto."
+    if "Timeout" in detail or "ConnectError" in detail:
+        return "Non raggiungibile in questo momento (rete o sito lento)."
+    if "senza notizie" in detail:
+        return "Ha risposto, ma senza notizie: il feed potrebbe essere cambiato."
+    return detail

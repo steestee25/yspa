@@ -29,6 +29,7 @@ templates.env.filters.update({
     "event": labels.event,
     "source": labels.source,
     "reason": labels.reason,
+    "source_error": labels.source_error,
 })
 
 
